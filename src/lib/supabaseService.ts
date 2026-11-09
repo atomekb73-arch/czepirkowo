@@ -37,7 +37,6 @@ export async function uploadProductWithWebP(
   imageBlob: Blob
 ): Promise<Product | null> {
   if (!isSupabaseConfigured || !supabase) {
-    // Tryb demo / lokalny
     const fallbackUrl = URL.createObjectURL(imageBlob);
     return {
       id: 'local-' + Date.now().toString().slice(-4),
@@ -48,10 +47,8 @@ export async function uploadProductWithWebP(
   }
 
   try {
-    // Nazwa pliku z unikalnym timestampem
     const fileName = `unikat-${Date.now()}.webp`;
 
-    // 1. Upload do Storage bucket: product-images
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('product-images')
       .upload(fileName, imageBlob, {
@@ -59,18 +56,14 @@ export async function uploadProductWithWebP(
         upsert: false,
       });
 
-    if (uploadError) {
-      throw uploadError;
-    }
+    if (uploadError) throw uploadError;
 
-    // 2. Pobranie publicznego linku CDN
     const { data: publicUrlData } = supabase.storage
       .from('product-images')
       .getPublicUrl(uploadData.path);
 
     const publicUrl = publicUrlData.publicUrl;
 
-    // 3. Zapis rekordu w tabeli 'products'
     const { data: insertedData, error: insertError } = await supabase
       .from('products')
       .insert({
@@ -85,9 +78,7 @@ export async function uploadProductWithWebP(
       .select()
       .single();
 
-    if (insertError) {
-      throw insertError;
-    }
+    if (insertError) throw insertError;
 
     return {
       id: insertedData.id,
@@ -102,12 +93,48 @@ export async function uploadProductWithWebP(
     };
   } catch (err) {
     console.error('Błąd podczas zapisu w Supabase:', err);
-    alert('Wystąpił problem z zapisem w bazie Supabase. Szczegóły w konsoli.');
+    alert('Wystąpił problem z zapisem w bazie Supabase.');
     return null;
   }
 }
 
-// 3. POBIERANIE CENNIKA USŁUG
+// 3. USUWANIE PRODUKTU
+export async function deleteProductFromDb(productId: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase) return true;
+
+  try {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Błąd usuwania produktu:', err);
+    return false;
+  }
+}
+
+// 4. ZMIANA STATUSU (Oznacz jako sprzedane / przywróć)
+export async function toggleProductStatusInDb(productId: string, isAvailable: boolean): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase) return true;
+
+  try {
+    const { error } = await supabase
+      .from('products')
+      .update({ is_available: isAvailable })
+      .eq('id', productId);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Błąd zmiany statusu:', err);
+    return false;
+  }
+}
+
+// 5. POBIERANIE CENNIKA USŁUG
 export async function getServices(): Promise<ServicePriceItem[]> {
   if (!isSupabaseConfigured || !supabase) {
     return TAILOR_SERVICES;
@@ -130,14 +157,13 @@ export async function getServices(): Promise<ServicePriceItem[]> {
   }));
 }
 
-// 4. AKTUALIZACJA CENNIKA USŁUG
+// 6. AKTUALIZACJA CENNIKA USŁUG
 export async function saveServices(services: ServicePriceItem[]): Promise<boolean> {
   if (!isSupabaseConfigured || !supabase) {
     return true;
   }
 
   try {
-    // Usunięcie starych i wstawienie zaktualizowanych
     await supabase.from('services').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
     const toInsert = services.map((s, idx) => ({
