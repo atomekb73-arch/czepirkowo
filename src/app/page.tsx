@@ -11,7 +11,7 @@ import AdminPanel from '@/components/AdminPanel';
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [services, setServices] = useState<ServicePriceItem[]>(TAILOR_SERVICES);
-  const [activeTab, setActiveTab] = useState<'wszystkie' | 'torby' | 'akcesoria' | 'sprzedane'>('wszystkie');
+  const [activeTab, setActiveTab] = useState<'wszystkie' | 'torby' | 'akcesoria' | 'dom' | 'sprzedane'>('wszystkie');
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
@@ -38,10 +38,24 @@ export default function HomePage() {
   }, []);
 
   const filteredProducts = products.filter((p) => {
-    if (activeTab === 'torby') return p.category === 'Torby i Nerki' && p.isAvailable;
-    if (activeTab === 'akcesoria') return p.category === 'Akcesoria Zero Waste' && p.isAvailable;
-    if (activeTab === 'sprzedane') return !p.isAvailable;
-    return true;
+    if (activeTab === 'torby') {
+      return (
+        p.category.includes('Torby') ||
+        p.category.includes('Nerki') ||
+        p.category.includes('Kufry') ||
+        p.category.includes('Shopperki')
+      ) && p.isAvailable;
+    }
+    if (activeTab === 'akcesoria') {
+      return (p.category.includes('Akcesoria') || p.category.includes('Zero Waste')) && p.isAvailable;
+    }
+    if (activeTab === 'dom') {
+      return p.category.includes('Dla Domu') && p.isAvailable;
+    }
+    if (activeTab === 'sprzedane') {
+      return !p.isAvailable;
+    }
+    return p.isAvailable;
   });
 
   const handleOpenAdmin = () => {
@@ -139,8 +153,9 @@ export default function HomePage() {
           {(
             [
               { id: 'wszystkie', label: 'Wszystkie dostępne' },
-              { id: 'torby', label: 'Torby & Nerki' },
+              { id: 'torby', label: 'Torby, Kufry & Nerki' },
               { id: 'akcesoria', label: 'Akcesoria Zero Waste' },
+              { id: 'dom', label: 'Dla Domu' },
               { id: 'sprzedane', label: 'Galeria sprzedanych' },
             ] as const
           ).map((tab) => (

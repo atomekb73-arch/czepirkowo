@@ -2,12 +2,12 @@ export interface Product {
   id: string;
   title: string;
   price: number;
-  category: 'Torby i Nerki' | 'Akcesoria Zero Waste' | 'Sukienki i Kimona' | 'Dla Domu';
+  category: string;
   dimensions: string;
   description: string;
   imageUrl: string;
   isAvailable: boolean;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface ServicePriceItem {

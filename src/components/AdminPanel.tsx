@@ -272,9 +272,11 @@ export default function AdminPanel({
                 }
                 className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
               >
-                <option value="Torby i Nerki">Torby i Nerki (Wysoka marża)</option>
-                <option value="Akcesoria Zero Waste">Akcesoria Zero Waste</option>
-                <option value="Dla Domu">Dla Domu</option>
+                <option value="Torby i Kufry">Torby i Kufry (Kuferek retro itp.)</option>
+                <option value="Torby & Shopperki">Torby & Shopperki</option>
+                <option value="Torby & Nerki">Torby & Nerki</option>
+                <option value="Akcesoria Zero Waste">Akcesoria Zero Waste (Scrunchies, kosmetyczki)</option>
+                <option value="Dla Domu">Dla Domu (Poszewki lniane, poduszki)</option>
               </select>
             </div>
             <div>
