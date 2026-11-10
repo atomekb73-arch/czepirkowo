@@ -181,7 +181,7 @@ export default function AdminPanel({
   };
 
   return (
-    <div className="bg-white rounded-3xl shadow-2xl border-2 border-stone-300 p-5 sm:p-8 max-w-2xl mx-auto">
+    <div className="w-full bg-white rounded-3xl shadow-2xl border-2 border-stone-300 p-5 sm:p-8 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
           <span className="text-[11px] font-black text-amber-950 bg-amber-100 border border-amber-400 px-3 py-1 rounded-full uppercase tracking-wider">
@@ -395,24 +395,26 @@ export default function AdminPanel({
               </button>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
               {products.map((item) => (
                 <div
                   key={item.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-stone-50 hover:bg-stone-100 rounded-2xl border-2 border-stone-200 transition-all gap-3"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-stone-50 hover:bg-stone-100/90 rounded-2xl border-2 border-stone-200 transition-all gap-3"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      className="w-13 h-13 rounded-xl object-cover border border-stone-300 shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-bold text-stone-950 text-sm leading-tight truncate">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 border-stone-300 bg-stone-200 shrink-0">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-stone-950 text-sm leading-snug">
                         {item.title}
                       </p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="font-extrabold text-stone-900 text-xs">
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className="font-black text-stone-950 text-xs">
                           {item.price} zł
                         </span>
                         <span className="text-stone-300">·</span>
@@ -421,7 +423,7 @@ export default function AdminPanel({
                         </span>
                         <span className="text-stone-300">·</span>
                         <span
-                          className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                          className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                             item.isAvailable
                               ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
                               : 'bg-stone-200 text-stone-700 border border-stone-300'
@@ -433,13 +435,13 @@ export default function AdminPanel({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <div className="flex items-center gap-2 self-stretch sm:self-center justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
                     {/* Przełącznik: Sprzedane / Dostępne */}
                     <button
                       type="button"
                       disabled={updatingId === item.id}
                       onClick={() => handleToggleStatus(item.id, item.isAvailable)}
-                      className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all border cursor-pointer ${
+                      className={`text-xs px-3 py-2 rounded-xl font-bold transition-all border cursor-pointer ${
                         item.isAvailable
                           ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
                           : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border-emerald-300'
@@ -453,7 +455,7 @@ export default function AdminPanel({
                       type="button"
                       disabled={updatingId === item.id}
                       onClick={() => handleDeleteProduct(item.id, item.imageUrl, item.title)}
-                      className="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold transition-all cursor-pointer"
+                      className="text-xs px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold transition-all cursor-pointer"
                     >
                       🗑️ Usuń
                     </button>
