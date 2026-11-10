@@ -3,29 +3,35 @@
 import React, { useState, useRef } from 'react';
 import { convertToWebP } from '@/lib/imageOptimizer';
 import { Product, ServicePriceItem } from '@/lib/types';
-import { uploadProductWithWebP } from '@/lib/supabaseService';
+import { uploadProductWithWebP, deleteProduct, toggleProductStatus } from '@/lib/supabaseService';
 
 interface AdminPanelProps {
+  products?: Product[];
   services: ServicePriceItem[];
   onProductCreated: (newProduct: Product) => void;
+  onProductDeleted?: (productId: string) => void;
+  onProductStatusToggled?: (productId: string, isAvailable: boolean) => void;
   onUpdateServices: (services: ServicePriceItem[]) => void;
   onClose?: () => void;
 }
 
 export default function AdminPanel({
+  products = [],
   services,
   onProductCreated,
+  onProductDeleted,
+  onProductStatusToggled,
   onUpdateServices,
   onClose,
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'product' | 'pricing'>('product');
+  const [activeTab, setActiveTab] = useState<'product' | 'items' | 'pricing'>('product');
 
   // Stan dodawania produktu
-  const [dragActive, setDragActive] = useState(false);
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [stats, setStats] = useState<{ orig: string; comp: string; ratio: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [productForm, setProductForm] = useState({
     title: '',
     price: '',
@@ -110,6 +116,41 @@ export default function AdminPanel({
     }
   };
 
+  const handleDeleteProduct = async (productId: string, imageUrl?: string, title?: string) => {
+    if (!confirm(`Czy na pewno chcesz usunąć unikat "${title || 'ten produkt'}"?`)) {
+      return;
+    }
+
+    try {
+      setUpdatingId(productId);
+      await deleteProduct(productId, imageUrl);
+      if (onProductDeleted) {
+        onProductDeleted(productId);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Nie udało się usunąć produktu z bazy.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleToggleStatus = async (productId: string, currentStatus: boolean) => {
+    try {
+      setUpdatingId(productId);
+      const nextStatus = !currentStatus;
+      await toggleProductStatus(productId, nextStatus);
+      if (onProductStatusToggled) {
+        onProductStatusToggled(productId, nextStatus);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Nie udało się zaktualizować statusu dostępności.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const handleServiceChange = (index: number, field: keyof ServicePriceItem, value: string) => {
     const updated = [...localServices];
     updated[index] = { ...updated[index], [field]: value };
@@ -136,55 +177,67 @@ export default function AdminPanel({
 
   const handleSaveServices = () => {
     onUpdateServices(localServices);
-    alert('Cennik poprawek w Międzyrzeczu został pomyślnie zaktualizowany!');
+    alert('Cennik poprawek w Międzyrzeczu został pomyślnie zaktualizowany w bazie!');
   };
 
   return (
-    <div className="bg-white rounded-3xl shadow-2xl border-2 border-stone-300 p-6 md:p-8 max-w-2xl mx-auto">
+    <div className="bg-white rounded-3xl shadow-2xl border-2 border-stone-300 p-5 sm:p-8 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
           <span className="text-[11px] font-black text-amber-950 bg-amber-100 border border-amber-400 px-3 py-1 rounded-full uppercase tracking-wider">
             Zarządzanie Pracownią (Supabase Baza & Storage)
           </span>
-          <h2 className="text-2xl font-serif font-black text-stone-950 mt-1.5">
+          <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-950 mt-1.5">
             Kokpit Magdy
           </h2>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="text-stone-700 hover:text-black text-sm font-bold p-2 border border-stone-300 rounded-lg"
+            className="text-stone-700 hover:text-black text-xs sm:text-sm font-bold p-2 border border-stone-300 rounded-lg cursor-pointer"
           >
             ✕ Zamknij
           </button>
         )}
       </div>
 
-      {/* Zakładki */}
-      <div className="flex gap-2 border-b-2 border-stone-300 pb-3 mb-6">
+      {/* Zakładki kokpitu */}
+      <div className="flex flex-wrap gap-2 border-b-2 border-stone-300 pb-3 mb-6">
         <button
           onClick={() => setActiveTab('product')}
-          className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all ${
+          className={`text-xs font-bold px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer ${
             activeTab === 'product'
               ? 'bg-stone-950 text-white shadow-sm'
               : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
           }`}
         >
-          📸 + Wystaw Nowy Unikat
+          📸 + Wystaw Unikat
         </button>
+
+        <button
+          onClick={() => setActiveTab('items')}
+          className={`text-xs font-bold px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'items'
+              ? 'bg-stone-950 text-white shadow-sm'
+              : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+          }`}
+        >
+          📦 Wystawione Rzeczy ({products.length})
+        </button>
+
         <button
           onClick={() => setActiveTab('pricing')}
-          className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all ${
+          className={`text-xs font-bold px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer ${
             activeTab === 'pricing'
               ? 'bg-stone-950 text-white shadow-sm'
               : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
           }`}
         >
-          ✂️ Zmień Ceny Poprawek
+          ✂️ Cennik Poprawek
         </button>
       </div>
 
-      {/* Widok Dodawania Produktu */}
+      {/* 1. Widok Dodawania Produktu */}
       {activeTab === 'product' && (
         <form onSubmit={handlePublishProduct} className="space-y-4">
           <div
@@ -215,15 +268,15 @@ export default function AdminPanel({
                     WebP: {stats.orig} → {stats.comp} ({stats.ratio})
                   </div>
                 )}
-                <p className="text-xs font-semibold text-stone-600">Kliknij, by zmienić zdjęcie</p>
+                <p className="text-xs font-semibold text-stone-600">Dotknij, by zmienić zdjęcie</p>
               </div>
             ) : (
               <div className="py-4 space-y-1">
                 <div className="text-3xl">📷</div>
                 <p className="text-sm font-bold text-stone-950">
-                  Przeciągnij lub kliknij, by wybrać zdjęcie z telefonu
+                  Dotknij aparatu lub wybierz zdjęcie z telefonu
                 </p>
-                <p className="text-xs font-semibold text-stone-600">Autokompresja WebP & upload do chmury</p>
+                <p className="text-xs font-semibold text-stone-600">Autokompresja WebP &amp; chmura Supabase</p>
               </div>
             )}
           </div>
@@ -231,7 +284,7 @@ export default function AdminPanel({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-stone-900 uppercase mb-1">
-                Nazwa rzeczy
+                Nazwa unikatowej rzeczy
               </label>
               <input
                 type="text"
@@ -239,7 +292,7 @@ export default function AdminPanel({
                 placeholder="np. Nerka Miejska Butelkowa Zieleń"
                 value={productForm.title}
                 onChange={(e) => setProductForm({ ...productForm, title: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950"
+                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
               />
             </div>
             <div>
@@ -252,7 +305,7 @@ export default function AdminPanel({
                 placeholder="159"
                 value={productForm.price}
                 onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-black text-stone-950"
+                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-black text-stone-950 bg-white"
               />
             </div>
           </div>
@@ -272,11 +325,11 @@ export default function AdminPanel({
                 }
                 className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
               >
-                <option value="Torby i Kufry">Torby i Kufry (Kuferek retro itp.)</option>
+                <option value="Torby i Kufry">Torby i Kufry (Kuferek retro)</option>
                 <option value="Torby & Shopperki">Torby & Shopperki</option>
                 <option value="Torby & Nerki">Torby & Nerki</option>
                 <option value="Akcesoria Zero Waste">Akcesoria Zero Waste (Scrunchies, kosmetyczki)</option>
-                <option value="Dla Domu">Dla Domu (Poszewki lniane, poduszki)</option>
+                <option value="Dla Domu">Dla Domu (Poszewki lniane)</option>
               </select>
             </div>
             <div>
@@ -290,22 +343,129 @@ export default function AdminPanel({
                 onChange={(e) =>
                   setProductForm({ ...productForm, dimensions: e.target.value })
                 }
-                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950"
+                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-stone-900 uppercase mb-1">
+              Krótki opis
+            </label>
+            <textarea
+              rows={2}
+              placeholder="np. Pojedynczy egzemplarz z ozdobną pasmanterią. Wytrzymała podszewka."
+              value={productForm.description}
+              onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+              className="w-full px-3.5 py-2 rounded-xl border-2 border-stone-300 text-sm font-medium text-stone-950 bg-white"
+            />
           </div>
 
           <button
             type="submit"
             disabled={isUploading}
-            className="w-full py-3.5 bg-stone-950 hover:bg-stone-800 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50"
+            className="w-full py-3.5 bg-stone-950 hover:bg-stone-800 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer"
           >
-            {isUploading ? 'Wysyłanie do Supabase...' : 'Wystaw i zapisz w bazie'}
+            {isUploading ? 'Wysyłanie do Supabase...' : '✨ Wystaw do showroomu'}
           </button>
         </form>
       )}
 
-      {/* Widok Edycji Cennika */}
+      {/* 2. Widok Zarządzania Wystawionymi Rzeczami */}
+      {activeTab === 'items' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+            <h3 className="font-bold text-stone-900 text-sm">
+              Wystawione unikaty ({products.length})
+            </h3>
+            <span className="text-[11px] text-stone-500 font-medium">
+              Zmiany zapisują się natychmiast w bazie Supabase
+            </span>
+          </div>
+
+          {products.length === 0 ? (
+            <div className="text-center py-12 bg-stone-50 rounded-2xl border-2 border-dashed border-stone-300">
+              <p className="text-sm font-semibold text-stone-600">Brak wystawionych produktów.</p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('product')}
+                className="mt-3 text-xs bg-stone-950 text-white px-4 py-2 rounded-xl font-bold cursor-pointer"
+              >
+                + Wystaw pierwszy unikat
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
+              {products.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-stone-50 hover:bg-stone-100 rounded-2xl border-2 border-stone-200 transition-all gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      className="w-13 h-13 rounded-xl object-cover border border-stone-300 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-950 text-sm leading-tight truncate">
+                        {item.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="font-extrabold text-stone-900 text-xs">
+                          {item.price} zł
+                        </span>
+                        <span className="text-stone-300">·</span>
+                        <span className="text-[11px] font-semibold text-stone-600">
+                          {item.category}
+                        </span>
+                        <span className="text-stone-300">·</span>
+                        <span
+                          className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                            item.isAvailable
+                              ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                              : 'bg-stone-200 text-stone-700 border border-stone-300'
+                          }`}
+                        >
+                          {item.isAvailable ? '🟢 Dostępne' : '🔴 Sprzedane'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    {/* Przełącznik: Sprzedane / Dostępne */}
+                    <button
+                      type="button"
+                      disabled={updatingId === item.id}
+                      onClick={() => handleToggleStatus(item.id, item.isAvailable)}
+                      className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all border cursor-pointer ${
+                        item.isAvailable
+                          ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
+                          : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border-emerald-300'
+                      }`}
+                    >
+                      {item.isAvailable ? 'Oznacz: Sprzedane' : 'Przywróć'}
+                    </button>
+
+                    {/* Przycisk: Usuń */}
+                    <button
+                      type="button"
+                      disabled={updatingId === item.id}
+                      onClick={() => handleDeleteProduct(item.id, item.imageUrl, item.title)}
+                      className="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold transition-all cursor-pointer"
+                    >
+                      🗑️ Usuń
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. Widok Edycji Cennika */}
       {activeTab === 'pricing' && (
         <div className="space-y-4">
           <p className="text-xs font-semibold text-stone-700">
@@ -318,63 +478,55 @@ export default function AdminPanel({
                 key={idx}
                 className="p-4 bg-stone-50 rounded-xl border-2 border-stone-300 space-y-2 text-xs"
               >
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-stone-600">Pozycja #{idx + 1}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <input
+                    type="text"
+                    value={service.name}
+                    onChange={(e) => handleServiceChange(idx, 'name', e.target.value)}
+                    className="font-bold text-stone-900 bg-white border border-stone-300 rounded-lg px-2.5 py-1.5 flex-1"
+                  />
                   <button
                     type="button"
                     onClick={() => handleRemoveService(idx)}
-                    className="text-red-600 hover:text-red-800 font-bold"
+                    className="text-red-600 hover:text-red-800 font-bold px-2 py-1 cursor-pointer"
                   >
-                    Usuń
+                    ✕
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] uppercase font-bold text-stone-900">
-                      Nazwa usługi
-                    </label>
-                    <input
-                      type="text"
-                      value={service.name}
-                      onChange={(e) => handleServiceChange(idx, 'name', e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg border-2 border-stone-300 font-semibold text-stone-950 bg-white"
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] uppercase font-bold text-stone-900">
-                      Cena (zł)
+                    <label className="block text-[10px] uppercase font-bold text-stone-500 mb-0.5">
+                      Cena (np. &quot;od 35 zł&quot;)
                     </label>
                     <input
                       type="text"
                       value={service.price}
                       onChange={(e) => handleServiceChange(idx, 'price', e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg border-2 border-stone-300 font-black text-stone-950 bg-white"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] uppercase font-bold text-stone-900">
-                      Opis usługi
-                    </label>
-                    <input
-                      type="text"
-                      value={service.description}
-                      onChange={(e) => handleServiceChange(idx, 'description', e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg border-2 border-stone-300 font-semibold text-stone-950 bg-white"
+                      className="w-full bg-white border border-stone-300 rounded-lg px-2.5 py-1 font-bold text-stone-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] uppercase font-bold text-stone-900">
-                      Czas realizacji
+                    <label className="block text-[10px] uppercase font-bold text-stone-500 mb-0.5">
+                      Czas (np. &quot;24-48h&quot;)
                     </label>
                     <input
                       type="text"
                       value={service.turnaround}
                       onChange={(e) => handleServiceChange(idx, 'turnaround', e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg border-2 border-stone-300 font-semibold text-stone-950 bg-white"
+                      className="w-full bg-white border border-stone-300 rounded-lg px-2.5 py-1 text-stone-800 font-medium"
                     />
                   </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-stone-500 mb-0.5">
+                    Krótki opis
+                  </label>
+                  <input
+                    type="text"
+                    value={service.description || ''}
+                    onChange={(e) => handleServiceChange(idx, 'description', e.target.value)}
+                    className="w-full bg-white border border-stone-300 rounded-lg px-2.5 py-1 text-stone-700"
+                  />
                 </div>
               </div>
             ))}
@@ -384,17 +536,16 @@ export default function AdminPanel({
             <button
               type="button"
               onClick={handleAddService}
-              className="text-xs bg-white border-2 border-stone-400 hover:border-stone-950 text-stone-900 font-bold px-4 py-2.5 rounded-xl transition-all"
+              className="text-xs bg-white border-2 border-stone-400 hover:border-stone-900 text-stone-900 font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer"
             >
               + Dodaj pozycję
             </button>
             <button
               type="button"
               onClick={handleSaveServices}
-              className="flex-1 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-black px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5"
+              className="flex-1 text-xs bg-stone-950 hover:bg-stone-800 text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-md cursor-pointer"
             >
-              <span>💾</span>
-              <span>Zapisz zmiany w cenniku</span>
+              💾 Zapisz cennik w bazie
             </button>
           </div>
         </div>

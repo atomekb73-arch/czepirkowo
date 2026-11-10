@@ -54,6 +54,16 @@ function AdminContent() {
     setProducts([newProduct, ...products]);
   };
 
+  const handleProductDeleted = (deletedId: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== deletedId));
+  };
+
+  const handleProductStatusToggled = (productId: string, isAvailable: boolean) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, isAvailable } : p))
+    );
+  };
+
   const handleUpdateServices = async (updatedServices: ServicePriceItem[]) => {
     setServices(updatedServices);
     await saveServices(updatedServices);
@@ -125,8 +135,11 @@ function AdminContent() {
           </div>
         ) : (
           <AdminPanel
+            products={products}
             services={services}
             onProductCreated={handleProductCreated}
+            onProductDeleted={handleProductDeleted}
+            onProductStatusToggled={handleProductStatusToggled}
             onUpdateServices={handleUpdateServices}
           />
         )}

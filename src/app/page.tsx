@@ -82,6 +82,16 @@ export default function HomePage() {
     setShowAdminModal(false);
   };
 
+  const handleProductDeleted = (deletedId: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== deletedId));
+  };
+
+  const handleProductStatusToggled = (productId: string, isAvailable: boolean) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, isAvailable } : p))
+    );
+  };
+
   const handleUpdateServices = async (updatedServices: ServicePriceItem[]) => {
     setServices(updatedServices);
     await saveServices(updatedServices);
@@ -249,8 +259,11 @@ export default function HomePage() {
         <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="relative w-full max-w-2xl my-8">
             <AdminPanel
+              products={products}
               services={services}
               onProductCreated={handleProductCreated}
+              onProductDeleted={handleProductDeleted}
+              onProductStatusToggled={handleProductStatusToggled}
               onUpdateServices={handleUpdateServices}
               onClose={() => setShowAdminModal(false)}
             />

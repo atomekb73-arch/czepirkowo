@@ -98,26 +98,43 @@ export async function uploadProductWithWebP(
   }
 }
 
-// 3. USUWANIE PRODUKTU
-export async function deleteProductFromDb(productId: string): Promise<boolean> {
-  if (!isSupabaseConfigured || !supabase) return true;
-
-  try {
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', productId);
-
-    if (error) throw error;
-    return true;
-  } catch (err) {
-    console.error('Błąd usuwania produktu:', err);
-    return false;
+// 3. USUWANIE PRODUKTU (Rekord w bazie + usunięcie zdjęcia ze Storage)
+export async function deleteProduct(productId: string, imageUrl?: string): Promise<{ success: boolean; mode?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: true, mode: 'mock' };
   }
+
+  // Usunięcie zdjęcia ze Storage (jeśli plik leży w naszym buckecie)
+  if (imageUrl && imageUrl.includes('/product-images/')) {
+    try {
+      const path = imageUrl.split('/product-images/')[1];
+      if (path) {
+        await supabase.storage.from('product-images').remove([decodeURIComponent(path)]);
+      }
+    } catch (e) {
+      console.warn('Nie udało się usunąć pliku ze Storage:', e);
+    }
+  }
+
+  // Usunięcie wpisu z tabeli products
+  const { error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', productId);
+
+  if (error) {
+    console.error('Błąd usuwania produktu:', error);
+    throw new Error(`Błąd usuwania produktu: ${error.message}`);
+  }
+
+  return { success: true };
 }
 
-// 4. ZMIANA STATUSU (Oznacz jako sprzedane / przywróć)
-export async function toggleProductStatusInDb(productId: string, isAvailable: boolean): Promise<boolean> {
+// Alias dla zgodności wstecznej
+export const deleteProductFromDb = deleteProduct;
+
+// 4. ZMIANA STATUSU (Oznacz jako sprzedane / przywróć dostępne)
+export async function toggleProductStatus(productId: string, isAvailable: boolean): Promise<boolean> {
   if (!isSupabaseConfigured || !supabase) return true;
 
   try {
@@ -129,10 +146,13 @@ export async function toggleProductStatusInDb(productId: string, isAvailable: bo
     if (error) throw error;
     return true;
   } catch (err) {
-    console.error('Błąd zmiany statusu:', err);
+    console.error('Błąd zmiany statusu produktu:', err);
     return false;
   }
 }
+
+// Alias dla zgodności wstecznej
+export const toggleProductStatusInDb = toggleProductStatus;
 
 // 5. POBIERANIE CENNIKA USŁUG
 export async function getServices(): Promise<ServicePriceItem[]> {
