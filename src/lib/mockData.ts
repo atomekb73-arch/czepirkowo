@@ -64,12 +64,12 @@ export const TAILOR_SERVICES: ServicePriceItem[] = [
     name: 'Taliowanie / Zwężanie sukienki lub koszuli',
     price: 'od 40 zł',
     turnaround: '48–72h',
-    description: 'Dopasowanie do sylwetki z przymiarką w pracowni.',
+    description: 'Dopasowanie do sylwetki po uprzedniej przymiarce.',
   },
   {
-    name: 'Pakiet Ekspres: 3 rzeczy w 48h (Abonament Lokalny)',
+    name: 'Pakiet Ekspres: 3 poprawki w 48h (Abonament Lokalny)',
     price: '99 zł',
     turnaround: 'Gwarantowane 48h',
-    description: 'Kompletne odświeżenie garderoby przed sezonem dla mieszkańców Międzyrzecza.',
+    description: 'Kompletne odświeżenie garderoby dla mieszkańców Międzyrzecza i okolic.',
   },
 ];

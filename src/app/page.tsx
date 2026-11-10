@@ -81,7 +81,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#F7F4EE] text-stone-900 antialiased selection:bg-amber-200">
-      {/* Top Banner: Czysty, bez zbędnych etykiet technicznych */}
+      {/* Top Banner: Górna belka */}
       <header className="sticky top-0 z-40 bg-[#F7F4EE] border-b-2 border-stone-300 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
@@ -93,7 +93,7 @@ export default function HomePage() {
                 Pracownia Czepirkowo
               </h1>
               <p className="text-xs font-semibold text-stone-700 mt-0.5">
-                Międzyrzecz • Dom Handlowy (parter), ul. Mieszka I 8
+                Międzyrzecz · Pracownia Rzemieślnicza &amp; Pasmanteria
               </p>
             </div>
           </div>
@@ -125,16 +125,16 @@ export default function HomePage() {
       <section className="pt-12 pb-8 px-4 text-center max-w-3xl mx-auto">
         <div className="inline-flex items-center gap-2 bg-emerald-100 border border-emerald-500 text-emerald-950 text-xs px-4 py-1.5 rounded-full font-bold mb-4 shadow-2xs">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
-          Pracownia w Międzyrzeczu otwarta • Bezpośredni kontakt z Magdą
+          Pracownia w Międzyrzeczu · Szybka wysyłka lub odbiór osobisty po umówieniu
         </div>
         <h2 className="text-3xl sm:text-5xl font-serif font-black text-stone-950 leading-tight">
           Unikatowe torby, nerki i akcesoria z pasmanterii.
         </h2>
         <p className="text-stone-800 font-medium text-sm sm:text-base mt-4 max-w-xl mx-auto leading-relaxed">
-          Każda rzecz szyta w jednym egzemplarzu z wyselekcjonowanych tkanin tapicerskich i końcówek belek. Kupujesz bezpośrednio u Magdy bez zbędnych pośredników.
+          Każda rzecz szyta w jednym egzemplarzu z wyselekcjonowanych tkanin tapicerskich i końcówek belek. Kupujesz bezpośrednio u Magdy bez pośredników i marż sklepowych.
         </p>
 
-        {/* Filters */}
+        {/* Filtry */}
         <div className="flex flex-wrap items-center justify-center gap-2 mt-7">
           {(
             [
@@ -242,15 +242,74 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t-2 border-stone-300 bg-white py-10 px-4 text-center text-xs font-semibold text-stone-600">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© Pracownia Twórcza @Czepirkowo – Magda Czepirska • Międzyrzecz</p>
+      {/* Oficjalna Stopka Firmowa */}
+      <footer className="bg-stone-900 text-stone-300 py-12 border-t border-stone-800">
+        <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+          <div>
+            <h4 className="text-white font-bold text-base mb-3 font-serif">Pracownia Twórcza @czepirkowo</h4>
+            <p className="text-stone-400 leading-relaxed">
+              Autorskie rękodzieło, unikatowe torby i akcesoria tworzone w pojedynczych egzemplarzach.
+            </p>
+            <p className="text-stone-400 mt-2 font-mono text-xs">NIP: 596-164-79-23</p>
+          </div>
+
+          <div>
+            <h4 className="text-white font-bold text-base mb-3 font-serif">Kontakt &amp; Zamówienia</h4>
+            <ul className="space-y-2">
+              <li>
+                <a href="tel:+48535277889" className="hover:text-amber-300 transition-colors flex items-center gap-2">
+                  <span>📞</span> +48 535 277 889
+                </a>
+              </li>
+              <li>
+                <a href="mailto:czepirkowo@gmail.com" className="hover:text-amber-300 transition-colors flex items-center gap-2">
+                  <span>✉️</span> czepirkowo@gmail.com
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="https://instagram.com/czepirkowo" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-amber-300 transition-colors flex items-center gap-2"
+                >
+                  <span>📸</span> Instagram: @czepirkowo
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="https://wa.me/48535277889" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-2 font-bold"
+                >
+                  <span>💬</span> WhatsApp: +48 535 277 889
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-white font-bold text-base mb-3 font-serif">Adres Korespondencyjny</h4>
+            <p className="text-stone-400 leading-relaxed">
+              Magda Czepirska<br />
+              Skrytka Pocztowa 87<br />
+              ul. 30 Stycznia 8<br />
+              66-300 Międzyrzecz
+            </p>
+            <p className="text-xs text-stone-400 mt-3 bg-stone-800/80 p-2.5 rounded-lg border border-stone-700">
+              📍 Odbiór zamówień w Międzyrzeczu po uzgodnieniu telefonicznym lub szybka wysyłka (Paczkomat / Kurier).
+            </p>
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 mt-8 pt-6 border-t border-stone-800 text-xs text-stone-500 text-center flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© {new Date().getFullYear()} Pracownia Twórcza @czepirkowo Magda Czepirska. Wszelkie prawa zastrzeżone.</p>
           <button
             onClick={handleOpenAdmin}
-            className="text-stone-400 hover:text-stone-800 text-xs underline"
+            className="text-stone-500 hover:text-stone-300 text-xs transition-colors cursor-pointer"
           >
-            🔒 Panel Pracowni
+            🔒 Strefa Magdy
           </button>
         </div>
       </footer>
