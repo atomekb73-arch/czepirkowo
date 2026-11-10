@@ -43,11 +43,32 @@ export default function AdminPanel({
   // Stan edycji cennika
   const [localServices, setLocalServices] = useState<ServicePriceItem[]>(services);
 
+  // In-app potwierdzenia i powiadomienia (zastępujące alert/confirm)
+  const [deleteModal, setDeleteModal] = useState<{
+    productId: string;
+    imageUrl?: string;
+    title: string;
+  } | null>(null);
+
+  const [deleteServiceIndex, setDeleteServiceIndex] = useState<number | null>(null);
+
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((curr) => (curr?.message === message ? null : curr));
+    }, 4000);
+  };
 
   const processFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      alert('Proszę wybrać plik graficzny (JPG, PNG, HEIC).');
+      showToast('Proszę wybrać plik graficzny (JPG, PNG, HEIC).', 'error');
       return;
     }
 
@@ -68,7 +89,7 @@ export default function AdminPanel({
       });
     } catch (err) {
       console.error(err);
-      alert('Błąd podczas kompresji zdjęcia.');
+      showToast('Błąd podczas kompresji zdjęcia.', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -77,7 +98,7 @@ export default function AdminPanel({
   const handlePublishProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!imageBlob || !preview) {
-      alert('Dodanie zdjęcia gotowego dzieła jest wymagane.');
+      showToast('Dodanie zdjęcia gotowego dzieła jest wymagane.', 'error');
       return;
     }
 
@@ -98,7 +119,7 @@ export default function AdminPanel({
 
       if (savedProduct) {
         onProductCreated(savedProduct);
-        alert(`Unikat "${savedProduct.title}" został pomyślnie zapisany w bazie i wystawiony w showroomie!`);
+        showToast(`✨ Unikat "${savedProduct.title}" został wystawiony w showroomie!`, 'success');
 
         setPreview(null);
         setImageBlob(null);
@@ -111,31 +132,35 @@ export default function AdminPanel({
           description: '',
         });
       }
+    } catch (err) {
+      console.error(err);
+      showToast('Nie udało się zapisać produktu w bazie.', 'error');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleDeleteProduct = async (productId: string, imageUrl?: string, title?: string) => {
-    if (!confirm(`Czy na pewno chcesz usunąć unikat "${title || 'ten produkt'}"?`)) {
-      return;
-    }
+  // Wywołanie potwierdzonego usunięcia produktu
+  const confirmDeleteProduct = async () => {
+    if (!deleteModal) return;
 
     try {
-      setUpdatingId(productId);
-      await deleteProduct(productId, imageUrl);
+      setUpdatingId(deleteModal.productId);
+      await deleteProduct(deleteModal.productId, deleteModal.imageUrl);
       if (onProductDeleted) {
-        onProductDeleted(productId);
+        onProductDeleted(deleteModal.productId);
       }
+      showToast(`Unikat "${deleteModal.title}" został usunięty z bazy.`, 'info');
+      setDeleteModal(null);
     } catch (err) {
       console.error(err);
-      alert('Nie udało się usunąć produktu z bazy.');
+      showToast('Nie udało się usunąć produktu z bazy.', 'error');
     } finally {
       setUpdatingId(null);
     }
   };
 
-  const handleToggleStatus = async (productId: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (productId: string, currentStatus: boolean, title: string) => {
     try {
       setUpdatingId(productId);
       const nextStatus = !currentStatus;
@@ -143,9 +168,13 @@ export default function AdminPanel({
       if (onProductStatusToggled) {
         onProductStatusToggled(productId, nextStatus);
       }
+      showToast(
+        nextStatus ? `„${title}” oznaczony jako dostępny 🟢` : `„${title}” oznaczony jako sprzedany 🔴`,
+        'info'
+      );
     } catch (err) {
       console.error(err);
-      alert('Nie udało się zaktualizować statusu dostępności.');
+      showToast('Nie udało się zaktualizować statusu dostępności.', 'error');
     } finally {
       setUpdatingId(null);
     }
@@ -167,25 +196,133 @@ export default function AdminPanel({
         description: 'Opis nowej usługi.',
       },
     ]);
+    showToast('Dodano nową pozycję do edytora cennika.', 'info');
   };
 
-  const handleRemoveService = (index: number) => {
-    if (confirm('Czy na pewno chcesz usunąć tę pozycję z cennika?')) {
-      setLocalServices(localServices.filter((_, i) => i !== index));
+  const confirmDeleteService = () => {
+    if (deleteServiceIndex === null) return;
+    const removedName = localServices[deleteServiceIndex]?.name || 'Usługa';
+    setLocalServices(localServices.filter((_, i) => i !== deleteServiceIndex));
+    setDeleteServiceIndex(null);
+    showToast(`Pozycja „${removedName}” została usunięta. Pamiętaj zapisać cennik.`, 'info');
+  };
+
+  const handleSaveServices = async () => {
+    try {
+      await onUpdateServices(localServices);
+      showToast('✅ Cennik poprawek został pomyślnie zaktualizowany w bazie!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Nie udało się zapisać cennika w bazie.', 'error');
     }
   };
 
-  const handleSaveServices = () => {
-    onUpdateServices(localServices);
-    alert('Cennik poprawek w Międzyrzeczu został pomyślnie zaktualizowany w bazie!');
-  };
-
   return (
-    <div className="w-full bg-white rounded-3xl shadow-2xl border-2 border-stone-300 p-5 sm:p-8 max-w-2xl mx-auto">
+    <div className="relative w-full bg-white rounded-3xl shadow-2xl border-2 border-stone-300 p-5 sm:p-8 max-w-2xl mx-auto">
+      {/* In-app Toast Banner */}
+      {toast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md animate-in fade-in slide-in-from-top-3 duration-200">
+          <div
+            className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border-2 text-xs font-bold ${
+              toast.type === 'success'
+                ? 'bg-emerald-50 text-emerald-950 border-emerald-400'
+                : toast.type === 'error'
+                ? 'bg-red-50 text-red-950 border-red-400'
+                : 'bg-stone-900 text-stone-100 border-stone-700'
+            }`}
+          >
+            <span className="text-base shrink-0">
+              {toast.type === 'success' ? '✨' : toast.type === 'error' ? '⚠️' : 'ℹ️'}
+            </span>
+            <span className="flex-1 leading-snug">{toast.message}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="opacity-70 hover:opacity-100 font-bold px-1.5 py-0.5 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* In-app Modal Potwierdzenia Usunięcia Produktu */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 sm:p-7 shadow-2xl border-2 border-stone-300 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-red-100 text-red-700 mx-auto flex items-center justify-center text-2xl border-2 border-red-200">
+              🗑️
+            </div>
+            <div>
+              <h3 className="font-serif font-black text-stone-950 text-xl">
+                Usunąć ten unikat?
+              </h3>
+              <p className="text-xs font-medium text-stone-600 mt-2 leading-relaxed">
+                Czy na pewno chcesz usunąć unikat <strong className="text-stone-950">&bdquo;{deleteModal.title}&rdquo;</strong>? 
+                Przedmiot zniknie ze sklepu, a plik WebP zostanie skasowany z magazynu.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteModal(null)}
+                className="flex-1 py-2.5 px-4 rounded-xl border-2 border-stone-300 hover:border-stone-400 font-bold text-xs text-stone-700 bg-stone-50 cursor-pointer transition-all"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteProduct}
+                disabled={Boolean(updatingId)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
+              >
+                {updatingId ? 'Usuwanie...' : 'Tak, usuń'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-app Modal Potwierdzenia Usunięcia Pozycji Cennika */}
+      {deleteServiceIndex !== null && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border-2 border-stone-300 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-900 mx-auto flex items-center justify-center text-xl border border-amber-300">
+              ✂️
+            </div>
+            <div>
+              <h3 className="font-serif font-black text-stone-950 text-lg">
+                Usunąć tę usługę?
+              </h3>
+              <p className="text-xs font-medium text-stone-600 mt-1">
+                Pozycja &bdquo;{localServices[deleteServiceIndex]?.name}&rdquo; zostanie skasowana z listy.
+              </p>
+            </div>
+            <div className="flex gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteServiceIndex(null)}
+                className="flex-1 py-2 px-3 rounded-xl border-2 border-stone-300 font-bold text-xs text-stone-700 bg-stone-50 cursor-pointer"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteService}
+                className="flex-1 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm cursor-pointer"
+              >
+                Usuń
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-5">
         <div>
           <span className="text-[11px] font-black text-amber-950 bg-amber-100 border border-amber-400 px-3 py-1 rounded-full uppercase tracking-wider">
-            Zarządzanie Pracownią (Supabase Baza & Storage)
+            Zarządzanie Pracownią (Supabase Baza &amp; Storage)
           </span>
           <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-950 mt-1.5">
             Kokpit Magdy
@@ -326,8 +463,8 @@ export default function AdminPanel({
                 className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
               >
                 <option value="Torby i Kufry">Torby i Kufry (Kuferek retro)</option>
-                <option value="Torby & Shopperki">Torby & Shopperki</option>
-                <option value="Torby & Nerki">Torby & Nerki</option>
+                <option value="Torby &amp; Shopperki">Torby &amp; Shopperki</option>
+                <option value="Torby &amp; Nerki">Torby &amp; Nerki</option>
                 <option value="Akcesoria Zero Waste">Akcesoria Zero Waste (Scrunchies, kosmetyczki)</option>
                 <option value="Dla Domu">Dla Domu (Poszewki lniane)</option>
               </select>
@@ -440,7 +577,7 @@ export default function AdminPanel({
                     <button
                       type="button"
                       disabled={updatingId === item.id}
-                      onClick={() => handleToggleStatus(item.id, item.isAvailable)}
+                      onClick={() => handleToggleStatus(item.id, item.isAvailable, item.title)}
                       className={`text-xs px-3 py-2 rounded-xl font-bold transition-all border cursor-pointer ${
                         item.isAvailable
                           ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
@@ -450,11 +587,17 @@ export default function AdminPanel({
                       {item.isAvailable ? 'Oznacz: Sprzedane' : 'Przywróć'}
                     </button>
 
-                    {/* Przycisk: Usuń */}
+                    {/* Przycisk: Usuń (otwiera dedykowany in-app dialog) */}
                     <button
                       type="button"
                       disabled={updatingId === item.id}
-                      onClick={() => handleDeleteProduct(item.id, item.imageUrl, item.title)}
+                      onClick={() =>
+                        setDeleteModal({
+                          productId: item.id,
+                          imageUrl: item.imageUrl,
+                          title: item.title,
+                        })
+                      }
                       className="text-xs px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold transition-all cursor-pointer"
                     >
                       🗑️ Usuń
@@ -489,8 +632,9 @@ export default function AdminPanel({
                   />
                   <button
                     type="button"
-                    onClick={() => handleRemoveService(idx)}
+                    onClick={() => setDeleteServiceIndex(idx)}
                     className="text-red-600 hover:text-red-800 font-bold px-2 py-1 cursor-pointer"
+                    title="Usuń pozycję"
                   >
                     ✕
                   </button>
