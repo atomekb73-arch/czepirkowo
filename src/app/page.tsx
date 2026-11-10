@@ -96,40 +96,41 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#F7F4EE] text-stone-900 antialiased selection:bg-amber-200">
       {/* Top Banner: Górna belka */}
-      <header className="sticky top-0 z-40 bg-[#F7F4EE] border-b-2 border-stone-300 shadow-xs">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <span className="w-11 h-11 rounded-full bg-stone-950 text-amber-100 flex items-center justify-center font-serif font-black text-xl border-2 border-stone-800 shadow-md">
+      <header className="sticky top-0 z-40 bg-[#F7F4EE]/95 backdrop-blur-xs border-b-2 border-stone-300 shadow-xs">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+            <span className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-stone-950 text-amber-100 flex items-center justify-center font-serif font-black text-base sm:text-xl border-2 border-stone-800 shadow-md shrink-0">
               Cz
             </span>
-            <div>
-              <h1 className="font-serif font-black text-stone-950 text-xl leading-tight tracking-tight">
+            <div className="min-w-0">
+              <h1 className="font-serif font-black text-stone-950 text-base sm:text-xl leading-tight tracking-tight truncate">
                 Pracownia Czepirkowo
               </h1>
-              <p className="text-xs font-semibold text-stone-700 mt-0.5">
-                Międzyrzecz · Pracownia Rzemieślnicza &amp; Pasmanteria
+              <p className="text-[10px] sm:text-xs font-semibold text-stone-600 sm:text-stone-700 mt-0.5 truncate">
+                Międzyrzecz · Rzemiosło &amp; Pasmanteria
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Duży, czytelny przycisk Cennika */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            {/* Przycisk Cennika - kompaktowy na mobile ("✂️ Cennik"), pełny na desktopie */}
             <button
               onClick={scrollToPricing}
-              className="text-sm font-bold text-amber-950 hover:text-black px-5 py-2.5 rounded-xl border-2 border-amber-800/40 bg-amber-100/70 hover:bg-amber-200 transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-[0.98]"
+              className="text-xs sm:text-sm font-bold text-amber-950 hover:text-black px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl border-2 border-amber-800/40 bg-amber-100/70 hover:bg-amber-200 transition-all shadow-xs flex items-center gap-1.5 sm:gap-2 cursor-pointer active:scale-[0.98]"
             >
-              <span>✂️</span>
-              <span>Cennik poprawek</span>
+              <span className="text-sm sm:text-base">✂️</span>
+              <span>Cennik<span className="hidden sm:inline"> poprawek</span></span>
             </button>
 
-            {/* Dyskretne wejście pracowni */}
+            {/* Dyskretne wejście pracowni - kłódka na mobile, kłódka + napis na tablet/desktop */}
             <button
               onClick={handleOpenAdmin}
               title="Strefa pracowni (wymaga zalogowania)"
-              className="text-xs font-bold px-3.5 py-2.5 rounded-xl transition-all shadow-xs bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700 flex items-center gap-1.5 cursor-pointer"
+              aria-label="Panel pracowni"
+              className="w-9 h-9 sm:w-auto sm:h-auto text-xs font-bold p-2 sm:px-3.5 sm:py-2.5 rounded-xl transition-all shadow-xs bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
             >
-              <span>🔒</span>
-              <span className="hidden sm:inline">Pracownia</span>
+              <span className="text-sm">🔒</span>
+              <span className="hidden md:inline">Pracownia</span>
             </button>
           </div>
         </div>
