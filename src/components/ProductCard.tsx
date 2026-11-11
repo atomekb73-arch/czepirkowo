@@ -14,6 +14,8 @@ export default function ProductCard({ product }: ProductCardProps) {
   const gallery = images && images.length > 0 ? images : [imageUrl];
   const [activeIdx, setActiveIdx] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [isDimExpanded, setIsDimExpanded] = useState(false);
 
   const phoneNumber = '48535277889'; // Numer Magdy w formacie międzynarodowym
   const buyMessage = encodeURIComponent(
@@ -132,17 +134,49 @@ export default function ProductCard({ product }: ProductCardProps) {
               </span>
             </div>
 
+            {/* SEKCJA 1: WYMIARY / ROZMIARÓWKA (ROZWIJANA) */}
             {dimensions && (
-              <p className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                <span>📏</span>
-                <span>{dimensions}</span>
-              </p>
+              <div 
+                onClick={() => setIsDimExpanded(!isDimExpanded)}
+                className="cursor-pointer group mb-2 bg-stone-50 hover:bg-stone-100 p-2.5 rounded-xl border border-stone-200/80 transition-colors"
+                title="Stuknij, aby rozwinąć / zwinąć pełne wymiary"
+              >
+                <div className="flex items-start gap-1.5 text-xs text-stone-700">
+                  <span className="shrink-0 text-sm">📏</span>
+                  <div className="flex-1 min-w-0">
+                    <div className={`transition-all leading-relaxed ${isDimExpanded ? '' : 'line-clamp-1'}`}>
+                      <span className="font-bold text-stone-900">Wymiary / Rozmiar: </span>
+                      <span className="text-stone-700">{dimensions}</span>
+                    </div>
+                    {dimensions.length > 35 && (
+                      <span className="text-[10px] text-amber-800 font-bold block mt-0.5 group-hover:underline">
+                        {isDimExpanded ? '▲ Zwiń wymiary' : '▼ Zobacz pełne wymiary i skład'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
 
+            {/* SEKCJA 2: PEŁNY OPIS PRODUKTU (ROZWIJANY) */}
             {product.description && (
-              <p className="text-xs font-medium text-stone-800 line-clamp-2 leading-relaxed">
-                {product.description}
-              </p>
+              <div 
+                onClick={() => setIsDescExpanded(!isDescExpanded)}
+                className="cursor-pointer text-xs text-stone-700 leading-relaxed mb-3"
+                title="Stuknij, aby przeczytać cały opis"
+              >
+                <p className={`transition-all ${isDescExpanded ? 'whitespace-pre-line' : 'line-clamp-2'}`}>
+                  {product.description}
+                </p>
+                {product.description.length > 60 && (
+                  <button 
+                    type="button"
+                    className="text-[11px] font-bold text-stone-900 underline underline-offset-2 mt-1 block hover:text-amber-900 cursor-pointer"
+                  >
+                    {isDescExpanded ? 'Zwiń opis' : '...czytaj cały opis'}
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
