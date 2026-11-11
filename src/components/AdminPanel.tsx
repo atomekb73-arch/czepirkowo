@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { convertToWebP } from '@/lib/imageOptimizer';
 import { Product, ServicePriceItem } from '@/lib/types';
 import { uploadProductWithWebP, deleteProduct, toggleProductStatus } from '@/lib/supabaseService';
+import ImageCropperModal from './ImageCropperModal';
 
 interface AdminPanelProps {
   products?: Product[];
@@ -32,6 +33,7 @@ export default function AdminPanel({
   const [stats, setStats] = useState<{ origTotal: string; compTotal: string; ratio: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [cropModalIndex, setCropModalIndex] = useState<number | null>(null);
 
   // Dynamiczne kategorie (istniejące + możliwość wpisania nowej)
   const [selectedCategory, setSelectedCategory] = useState<string>('Torby i Kufry');
@@ -132,6 +134,30 @@ export default function AdminPanel({
   const removePhoto = (idx: number) => {
     setImageBlobs((prev) => prev.filter((_, i) => i !== idx));
     setPreviews((prev) => prev.filter((_, i) => i !== idx));
+    showToast('Zdjęcie zostało usunięte z kolejki.', 'info');
+  };
+
+  const setAsMainPhoto = (idx: number) => {
+    if (idx === 0) return;
+    setImageBlobs((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      next.unshift(item);
+      return next;
+    });
+    setPreviews((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      next.unshift(item);
+      return next;
+    });
+    showToast('Ustawiono jako zdjęcie główne (okładkowe) ★', 'success');
+  };
+
+  const handleSaveCropped = (index: number, blob: Blob, previewUrl: string) => {
+    setImageBlobs((prev) => prev.map((b, i) => (i === index ? blob : b)));
+    setPreviews((prev) => prev.map((p, i) => (i === index ? previewUrl : p)));
+    showToast('Zdjęcie zostało pomyślnie wykadrowane i zoptymalizowane!', 'success');
   };
 
   const handlePublishProduct = async (e: React.FormEvent) => {
@@ -362,6 +388,15 @@ export default function AdminPanel({
         </div>
       )}
 
+      {/* Interaktywny Kadrownik Zdjęć (Filar 3 - Kadrowanie i dopasowanie proporcji) */}
+      {cropModalIndex !== null && previews[cropModalIndex] && (
+        <ImageCropperModal
+          imageSrc={previews[cropModalIndex]}
+          onSave={(blob, url) => handleSaveCropped(cropModalIndex, blob, url)}
+          onClose={() => setCropModalIndex(null)}
+        />
+      )}
+
       <div className="flex items-center justify-between mb-5">
         <div>
           <span className="text-[11px] font-black text-amber-950 bg-amber-100 border border-amber-400 px-3 py-1 rounded-full uppercase tracking-wider">
@@ -432,23 +467,45 @@ export default function AdminPanel({
 
             {previews.length > 0 ? (
               <div className="space-y-3">
-                <div className="flex flex-wrap gap-2.5 justify-center">
+                <div className="flex flex-wrap gap-3 justify-center">
                   {previews.map((src, i) => (
-                    <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-stone-300 shadow-sm group">
-                      <img src={src} alt={`Ujęcie ${i + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(i)}
-                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-md cursor-pointer"
-                        title="Usuń zdjęcie"
-                      >
-                        ✕
-                      </button>
-                      {i === 0 && (
-                        <span className="absolute bottom-1 left-1 bg-stone-900/85 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                          Główne
-                        </span>
-                      )}
+                    <div key={i} className="flex flex-col items-center gap-1.5">
+                      <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-2 border-stone-300 shadow-sm bg-stone-100 group">
+                        <img src={src} alt={`Ujęcie ${i + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(i)}
+                          className="absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black shadow-md cursor-pointer transition-all"
+                          title="Usuń zdjęcie"
+                        >
+                          ✕
+                        </button>
+                        {i === 0 && (
+                          <span className="absolute top-1.5 left-1.5 bg-stone-900/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                            ★ Główne
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1 w-full">
+                        <button
+                          type="button"
+                          onClick={() => setCropModalIndex(i)}
+                          className="flex-1 text-center text-[11px] font-bold py-1 px-1.5 bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 rounded-lg cursor-pointer transition-colors flex items-center justify-center gap-1 shadow-xs"
+                          title="Wykadruj i obróć to zdjęcie"
+                        >
+                          <span>✂️ Kadruj</span>
+                        </button>
+                        {i > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setAsMainPhoto(i)}
+                            title="Ustaw to zdjęcie jako pierwsze (okładkowe)"
+                            className="text-center text-[10px] font-bold py-1 px-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-lg cursor-pointer transition-colors"
+                          >
+                            ★ Główne
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
