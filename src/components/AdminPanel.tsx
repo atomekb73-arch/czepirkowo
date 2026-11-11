@@ -26,16 +26,21 @@ export default function AdminPanel({
 }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<'product' | 'items' | 'pricing'>('product');
 
-  // Stan dodawania produktu
-  const [imageBlob, setImageBlob] = useState<Blob | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [stats, setStats] = useState<{ orig: string; comp: string; ratio: string } | null>(null);
+  // Wielozdjęciowy moduł dodawania unikatów (Filar 3)
+  const [imageBlobs, setImageBlobs] = useState<Blob[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [stats, setStats] = useState<{ origTotal: string; compTotal: string; ratio: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Dynamiczne kategorie (istniejące + możliwość wpisania nowej)
+  const [selectedCategory, setSelectedCategory] = useState<string>('Torby i Kufry');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
+
   const [productForm, setProductForm] = useState({
     title: '',
     price: '',
-    category: 'Torby i Nerki' as Product['category'],
     dimensions: '',
     description: '',
   });
@@ -59,6 +64,19 @@ export default function AdminPanel({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Zbiór wszystkich dotychczasowych kategorii z bazy
+  const availableCategories = Array.from(
+    new Set([
+      'Torby i Kufry',
+      'Torby & Shopperki',
+      'Torby & Nerki',
+      'Akcesoria Zero Waste',
+      'Dla Domu',
+      'Bluzy & Sukienki',
+      ...products.map((p) => p.category).filter(Boolean),
+    ])
+  );
+
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
     setTimeout(() => {
@@ -66,41 +84,66 @@ export default function AdminPanel({
     }, 4000);
   };
 
-  const processFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      showToast('Proszę wybrać plik graficzny (JPG, PNG, HEIC).', 'error');
+  // Obsługa wielu zdjęć z aparatu lub galerii telefonu
+  const processFiles = async (files: FileList | File[]) => {
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (validFiles.length === 0) {
+      showToast('Wybierz pliki graficzne (JPG, PNG, HEIC).', 'error');
       return;
     }
 
     try {
       setIsUploading(true);
-      const res = await convertToWebP(file);
-      setImageBlob(res.blob);
-      setPreview(res.previewUrl);
+      let totalOrig = 0;
+      let totalComp = 0;
+      const newBlobs: Blob[] = [];
+      const newPreviews: string[] = [];
 
-      const origMB = (res.originalSize / (1024 * 1024)).toFixed(2);
-      const compKB = (res.compressedSize / 1024).toFixed(0);
-      const ratio = Math.round((1 - res.compressedSize / res.originalSize) * 100);
+      for (const file of validFiles) {
+        const res = await convertToWebP(file);
+        totalOrig += res.originalSize;
+        totalComp += res.compressedSize;
+        newBlobs.push(res.blob);
+        newPreviews.push(res.previewUrl);
+      }
+
+      setImageBlobs((prev) => [...prev, ...newBlobs]);
+      setPreviews((prev) => [...prev, ...newPreviews]);
+
+      const origMB = (totalOrig / (1024 * 1024)).toFixed(2);
+      const compKB = (totalComp / 1024).toFixed(0);
+      const ratio = Math.round((1 - totalComp / totalOrig) * 100);
 
       setStats({
-        orig: `${origMB} MB`,
-        comp: `${compKB} KB (WebP)`,
+        origTotal: `${origMB} MB`,
+        compTotal: `${compKB} KB (WebP)`,
         ratio: `${ratio}% lżejsze`,
       });
+
+      showToast(`Pomyślnie skompresowano ${validFiles.length} zdj. do WebP!`, 'success');
     } catch (err) {
       console.error(err);
-      showToast('Błąd podczas kompresji zdjęcia.', 'error');
+      showToast('Błąd kompresji zdjęć.', 'error');
     } finally {
       setIsUploading(false);
     }
   };
 
+  const removePhoto = (idx: number) => {
+    setImageBlobs((prev) => prev.filter((_, i) => i !== idx));
+    setPreviews((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handlePublishProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!imageBlob || !preview) {
-      showToast('Dodanie zdjęcia gotowego dzieła jest wymagane.', 'error');
+    if (imageBlobs.length === 0) {
+      showToast('Dodaj przynajmniej jedno zdjęcie gotowego dzieła.', 'error');
       return;
     }
+
+    const finalCategory = isCustomCategory
+      ? customCategoryInput.trim() || 'Unikaty Rzemieślnicze'
+      : selectedCategory;
 
     try {
       setIsUploading(true);
@@ -109,28 +152,29 @@ export default function AdminPanel({
         {
           title: productForm.title,
           price: Number(productForm.price) || 0,
-          category: productForm.category,
+          category: finalCategory,
           dimensions: productForm.dimensions,
           description: productForm.description,
           isAvailable: true,
         },
-        imageBlob
+        imageBlobs
       );
 
       if (savedProduct) {
         onProductCreated(savedProduct);
-        showToast(`✨ Unikat "${savedProduct.title}" został wystawiony w showroomie!`, 'success');
+        showToast(`✨ Unikat "${savedProduct.title}" (${imageBlobs.length} ujęć) wystawiony w showroomie!`, 'success');
 
-        setPreview(null);
-        setImageBlob(null);
+        setImageBlobs([]);
+        setPreviews([]);
         setStats(null);
         setProductForm({
           title: '',
           price: '',
-          category: 'Torby i Nerki',
           dimensions: '',
           description: '',
         });
+        setIsCustomCategory(false);
+        setCustomCategoryInput('');
       }
     } catch (err) {
       console.error(err);
@@ -140,7 +184,6 @@ export default function AdminPanel({
     }
   };
 
-  // Wywołanie potwierdzonego usunięcia produktu
   const confirmDeleteProduct = async () => {
     if (!deleteModal) return;
 
@@ -259,7 +302,7 @@ export default function AdminPanel({
               </h3>
               <p className="text-xs font-medium text-stone-600 mt-2 leading-relaxed">
                 Czy na pewno chcesz usunąć unikat <strong className="text-stone-950">&bdquo;{deleteModal.title}&rdquo;</strong>? 
-                Przedmiot zniknie ze sklepu, a plik WebP zostanie skasowany z magazynu.
+                Przedmiot zniknie ze sklepu, a pliki WebP zostaną skasowane z magazynu.
               </p>
             </div>
 
@@ -322,7 +365,7 @@ export default function AdminPanel({
       <div className="flex items-center justify-between mb-5">
         <div>
           <span className="text-[11px] font-black text-amber-950 bg-amber-100 border border-amber-400 px-3 py-1 rounded-full uppercase tracking-wider">
-            Zarządzanie Pracownią (Supabase Baza &amp; Storage)
+            Atelier Magdy Czepirskiej · Panel Kontrolny
           </span>
           <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-950 mt-1.5">
             Kokpit Magdy
@@ -348,7 +391,7 @@ export default function AdminPanel({
               : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
           }`}
         >
-          📸 + Wystaw Unikat
+          📸 + Wystaw Unikat (Seria ujęć)
         </button>
 
         <button
@@ -370,50 +413,74 @@ export default function AdminPanel({
               : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
           }`}
         >
-          ✂️ Cennik Poprawek
+          ✂️ Cennik Poprawek (48h)
         </button>
       </div>
 
-      {/* 1. Widok Dodawania Produktu */}
+      {/* 1. Widok Dodawania Produktu (Wielozdjęciowy WebP) */}
       {activeTab === 'product' && (
         <form onSubmit={handlePublishProduct} className="space-y-4">
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-stone-400 hover:border-stone-950 bg-stone-50 rounded-2xl p-6 text-center cursor-pointer transition-all"
-          >
+          <div className="border-2 border-dashed border-stone-400 hover:border-stone-950 bg-stone-50 rounded-2xl p-5 text-center transition-all">
             <input
               ref={fileInputRef}
               type="file"
+              multiple
               accept="image/*"
               className="hidden"
-              onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
+              onChange={(e) => e.target.files && processFiles(e.target.files)}
             />
 
-            {isUploading ? (
-              <p className="text-amber-950 text-xs font-bold animate-pulse">
-                Przetwarzanie i wysyłanie do Supabase Storage...
-              </p>
-            ) : preview ? (
-              <div className="space-y-2">
-                <img
-                  src={preview}
-                  alt="Podgląd"
-                  className="max-h-48 mx-auto rounded-xl shadow-md border border-stone-300 object-cover"
-                />
+            {previews.length > 0 ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2.5 justify-center">
+                  {previews.map((src, i) => (
+                    <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-stone-300 shadow-sm group">
+                      <img src={src} alt={`Ujęcie ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(i)}
+                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-md cursor-pointer"
+                        title="Usuń zdjęcie"
+                      >
+                        ✕
+                      </button>
+                      {i === 0 && (
+                        <span className="absolute bottom-1 left-1 bg-stone-900/85 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          Główne
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
                 {stats && (
                   <div className="inline-block bg-emerald-100 text-emerald-950 border border-emerald-400 text-xs px-3 py-1 rounded-full font-bold">
-                    WebP: {stats.orig} → {stats.comp} ({stats.ratio})
+                    {previews.length} zdjęć WebP: {stats.origTotal} → {stats.compTotal} ({stats.ratio})
                   </div>
                 )}
-                <p className="text-xs font-semibold text-stone-600">Dotknij, by zmienić zdjęcie</p>
+
+                <div className="flex gap-2 justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-xs bg-white border-2 border-stone-300 hover:border-stone-900 font-bold px-3 py-1.5 rounded-xl cursor-pointer"
+                  >
+                    + Dodaj kolejne zdjęcie (detal, podszewka)
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="py-4 space-y-1">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="py-6 space-y-1.5 cursor-pointer"
+              >
                 <div className="text-3xl">📷</div>
                 <p className="text-sm font-bold text-stone-950">
-                  Dotknij aparatu lub wybierz zdjęcie z telefonu
+                  Dotknij, by zrobić serię zdjęć aparatem (1–5 ujęć)
                 </p>
-                <p className="text-xs font-semibold text-stone-600">Autokompresja WebP &amp; chmura Supabase</p>
+                <p className="text-xs font-semibold text-stone-600">
+                  Przód, środek, zamek, podszewka · Autokompresja Google WebP (~120 KB)
+                </p>
               </div>
             )}
           </div>
@@ -426,7 +493,7 @@ export default function AdminPanel({
               <input
                 type="text"
                 required
-                placeholder="np. Nerka Miejska Butelkowa Zieleń"
+                placeholder="np. Kuferek Retro / Ruda Terakota"
                 value={productForm.title}
                 onChange={(e) => setProductForm({ ...productForm, title: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
@@ -447,51 +514,65 @@ export default function AdminPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-stone-900 uppercase mb-1">
-                Kategoria
+          {/* Wybór lub tworzenie nowej kategorii (Dynamiczne filtry) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-stone-900 uppercase">
+                Kategoria (generuje filtr na stronie)
               </label>
-              <select
-                value={productForm.category}
-                onChange={(e) =>
-                  setProductForm({
-                    ...productForm,
-                    category: e.target.value as Product['category'],
-                  })
-                }
-                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
+              <button
+                type="button"
+                onClick={() => setIsCustomCategory(!isCustomCategory)}
+                className="text-xs font-bold text-amber-900 hover:text-amber-950 underline cursor-pointer"
               >
-                <option value="Torby i Kufry">Torby i Kufry (Kuferek retro)</option>
-                <option value="Torby &amp; Shopperki">Torby &amp; Shopperki</option>
-                <option value="Torby &amp; Nerki">Torby &amp; Nerki</option>
-                <option value="Akcesoria Zero Waste">Akcesoria Zero Waste (Scrunchies, kosmetyczki)</option>
-                <option value="Dla Domu">Dla Domu (Poszewki lniane)</option>
-              </select>
+                {isCustomCategory ? '← Wybierz z listy' : '➕ Wpisz nową kategorię'}
+              </button>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-stone-900 uppercase mb-1">
-                Wymiary / Skład
-              </label>
+
+            {isCustomCategory ? (
               <input
                 type="text"
-                placeholder="np. 32x18 cm, welur tapicerski"
-                value={productForm.dimensions}
-                onChange={(e) =>
-                  setProductForm({ ...productForm, dimensions: e.target.value })
-                }
-                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
+                required
+                placeholder="Wpisz nową kategorię, np. Bluzy Oversize, Piżamki"
+                value={customCategoryInput}
+                onChange={(e) => setCustomCategoryInput(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-amber-600 text-sm font-bold text-stone-950 bg-amber-50/50"
               />
-            </div>
+            ) : (
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
+              >
+                {availableCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
             <label className="block text-xs font-bold text-stone-900 uppercase mb-1">
-              Krótki opis
+              Wymiary &amp; Tkanina
+            </label>
+            <input
+              type="text"
+              placeholder="np. 28 × 20 cm, welur obiciowy, podszewka, złote okucia"
+              value={productForm.dimensions}
+              onChange={(e) => setProductForm({ ...productForm, dimensions: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-stone-900 uppercase mb-1">
+              Krótki opis autorski
             </label>
             <textarea
               rows={2}
-              placeholder="np. Pojedynczy egzemplarz z ozdobną pasmanterią. Wytrzymała podszewka."
+              placeholder="np. Pojedynczy egzemplarz uszyty z wyselekcjonowanej tkaniny tapicerskiej. Zamykana na zamek."
               value={productForm.description}
               onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
               className="w-full px-3.5 py-2 rounded-xl border-2 border-stone-300 text-sm font-medium text-stone-950 bg-white"
@@ -503,7 +584,7 @@ export default function AdminPanel({
             disabled={isUploading}
             className="w-full py-3.5 bg-stone-950 hover:bg-stone-800 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer"
           >
-            {isUploading ? 'Wysyłanie do Supabase...' : '✨ Wystaw do showroomu'}
+            {isUploading ? 'Wysyłanie serii WebP do chmury...' : '✨ Wystaw unikat do showroomu'}
           </button>
         </form>
       )}
@@ -573,7 +654,6 @@ export default function AdminPanel({
                   </div>
 
                   <div className="flex items-center gap-2 self-stretch sm:self-center justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
-                    {/* Przełącznik: Sprzedane / Dostępne */}
                     <button
                       type="button"
                       disabled={updatingId === item.id}
@@ -587,7 +667,6 @@ export default function AdminPanel({
                       {item.isAvailable ? 'Oznacz: Sprzedane' : 'Przywróć'}
                     </button>
 
-                    {/* Przycisk: Usuń (otwiera dedykowany in-app dialog) */}
                     <button
                       type="button"
                       disabled={updatingId === item.id}

@@ -18,51 +18,70 @@ export async function getProducts(): Promise<Product[]> {
     return INITIAL_PRODUCTS;
   }
 
-  return data.map((item) => ({
-    id: item.id,
-    title: item.title,
-    price: Number(item.price),
-    category: item.category,
-    dimensions: item.dimensions || '',
-    description: item.description || '',
-    imageUrl: item.image_url,
-    isAvailable: item.is_available,
-    createdAt: item.created_at,
-  }));
+  return data.map((item) => {
+    const rawImg = item.image_url || '';
+    const allImages = rawImg.includes('||')
+      ? rawImg.split('||').map((s: string) => s.trim()).filter(Boolean)
+      : [rawImg];
+    const mainImg = allImages[0] || rawImg;
+
+    return {
+      id: item.id,
+      title: item.title,
+      price: Number(item.price),
+      category: item.category,
+      dimensions: item.dimensions || '',
+      description: item.description || '',
+      imageUrl: mainImg,
+      images: allImages,
+      isAvailable: item.is_available,
+      createdAt: item.created_at,
+    };
+  });
 }
 
-// 2. WGRYWANIE SKOMPRESOWANEGO ZDJĘCIA WEBP & TWORZENIE PRODUKTU
+// 2. WGRYWANIE SKOMPRESOWANYCH ZDJĘĆ WEBP & TWORZENIE PRODUKTU (Wspiera 1-5 zdjęć)
 export async function uploadProductWithWebP(
-  productData: Omit<Product, 'id' | 'imageUrl' | 'createdAt'>,
-  imageBlob: Blob
+  productData: Omit<Product, 'id' | 'imageUrl' | 'images' | 'createdAt'>,
+  imageBlobs: Blob[] | Blob
 ): Promise<Product | null> {
+  const blobs = Array.isArray(imageBlobs) ? imageBlobs : [imageBlobs];
+
   if (!isSupabaseConfigured || !supabase) {
-    const fallbackUrl = URL.createObjectURL(imageBlob);
+    const fallbackUrls = blobs.map((b) => URL.createObjectURL(b));
     return {
       id: 'local-' + Date.now().toString().slice(-4),
       ...productData,
-      imageUrl: fallbackUrl,
+      imageUrl: fallbackUrls[0],
+      images: fallbackUrls,
       createdAt: new Date().toISOString(),
     };
   }
 
   try {
-    const fileName = `unikat-${Date.now()}.webp`;
+    const uploadedUrls: string[] = [];
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(fileName, imageBlob, {
-        contentType: 'image/webp',
-        upsert: false,
-      });
+    for (let idx = 0; idx < blobs.length; idx++) {
+      const blob = blobs[idx];
+      const fileName = `unikat-${Date.now()}-${idx + 1}.webp`;
 
-    if (uploadError) throw uploadError;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, blob, {
+          contentType: 'image/webp',
+          upsert: false,
+        });
 
-    const { data: publicUrlData } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(uploadData.path);
+      if (uploadError) throw uploadError;
 
-    const publicUrl = publicUrlData.publicUrl;
+      const { data: publicUrlData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(uploadData.path);
+
+      uploadedUrls.push(publicUrlData.publicUrl);
+    }
+
+    const combinedImageUrl = uploadedUrls.join('||');
 
     const { data: insertedData, error: insertError } = await supabase
       .from('products')
@@ -72,13 +91,17 @@ export async function uploadProductWithWebP(
         category: productData.category,
         dimensions: productData.dimensions,
         description: productData.description,
-        image_url: publicUrl,
+        image_url: combinedImageUrl,
         is_available: true,
       })
       .select()
       .single();
 
     if (insertError) throw insertError;
+
+    const allImages = insertedData.image_url.includes('||')
+      ? insertedData.image_url.split('||').map((s: string) => s.trim()).filter(Boolean)
+      : [insertedData.image_url];
 
     return {
       id: insertedData.id,
@@ -87,32 +110,37 @@ export async function uploadProductWithWebP(
       category: insertedData.category,
       dimensions: insertedData.dimensions || '',
       description: insertedData.description || '',
-      imageUrl: insertedData.image_url,
+      imageUrl: allImages[0] || insertedData.image_url,
+      images: allImages,
       isAvailable: insertedData.is_available,
       createdAt: insertedData.created_at,
     };
   } catch (err) {
     console.error('Błąd podczas zapisu w Supabase:', err);
-    alert('Wystąpił problem z zapisem w bazie Supabase.');
-    return null;
+    throw err;
   }
 }
 
-// 3. USUWANIE PRODUKTU (Rekord w bazie + usunięcie zdjęcia ze Storage)
+// 3. USUWANIE PRODUKTU (Rekord w bazie + usunięcie wszystkich zdjęć ze Storage)
 export async function deleteProduct(productId: string, imageUrl?: string): Promise<{ success: boolean; mode?: string }> {
   if (!isSupabaseConfigured || !supabase) {
     return { success: true, mode: 'mock' };
   }
 
-  // Usunięcie zdjęcia ze Storage (jeśli plik leży w naszym buckecie)
-  if (imageUrl && imageUrl.includes('/product-images/')) {
-    try {
-      const path = imageUrl.split('/product-images/')[1];
-      if (path) {
-        await supabase.storage.from('product-images').remove([decodeURIComponent(path)]);
+  // Usunięcie zdjęć ze Storage
+  if (imageUrl) {
+    const urls = imageUrl.includes('||') ? imageUrl.split('||') : [imageUrl];
+    for (const u of urls) {
+      if (u.includes('/product-images/')) {
+        try {
+          const path = u.split('/product-images/')[1];
+          if (path) {
+            await supabase.storage.from('product-images').remove([decodeURIComponent(path)]);
+          }
+        } catch (e) {
+          console.warn('Nie udało się usunąć pliku ze Storage:', e);
+        }
       }
-    } catch (e) {
-      console.warn('Nie udało się usunąć pliku ze Storage:', e);
     }
   }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Product, ServicePriceItem } from '@/lib/types';
 import { INITIAL_PRODUCTS, TAILOR_SERVICES } from '@/lib/mockData';
 import { getProducts, getServices, saveServices } from '@/lib/supabaseService';
@@ -11,7 +11,7 @@ import AdminPanel from '@/components/AdminPanel';
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [services, setServices] = useState<ServicePriceItem[]>(TAILOR_SERVICES);
-  const [activeTab, setActiveTab] = useState<'wszystkie' | 'torby' | 'akcesoria' | 'dom' | 'sprzedane'>('wszystkie');
+  const [selectedCategory, setSelectedCategory] = useState<string>('wszystkie');
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
@@ -37,25 +37,29 @@ export default function HomePage() {
     loadData();
   }, []);
 
+  // Filar 2: Dynamiczne filtry generowane automatycznie z bazy produktów
+  const dynamicCategories = useMemo(() => {
+    const map = new Map<string, number>();
+    products.forEach((p) => {
+      if (p.isAvailable && p.category) {
+        const cat = p.category.trim();
+        map.set(cat, (map.get(cat) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+  }, [products]);
+
+  const availableCount = products.filter((p) => p.isAvailable).length;
+  const soldCount = products.filter((p) => !p.isAvailable).length;
+
   const filteredProducts = products.filter((p) => {
-    if (activeTab === 'torby') {
-      return (
-        p.category.includes('Torby') ||
-        p.category.includes('Nerki') ||
-        p.category.includes('Kufry') ||
-        p.category.includes('Shopperki')
-      ) && p.isAvailable;
-    }
-    if (activeTab === 'akcesoria') {
-      return (p.category.includes('Akcesoria') || p.category.includes('Zero Waste')) && p.isAvailable;
-    }
-    if (activeTab === 'dom') {
-      return p.category.includes('Dla Domu') && p.isAvailable;
-    }
-    if (activeTab === 'sprzedane') {
+    if (selectedCategory === 'sprzedane') {
       return !p.isAvailable;
     }
-    return p.isAvailable;
+    if (selectedCategory === 'wszystkie') {
+      return p.isAvailable;
+    }
+    return p.isAvailable && p.category.trim().toLowerCase() === selectedCategory.trim().toLowerCase();
   });
 
   const handleOpenAdmin = () => {
@@ -102,6 +106,11 @@ export default function HomePage() {
     const el = document.getElementById('cennik');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  const customOrderMessage = encodeURIComponent(
+    'Dzień dobry Magdo! Piszę ze strony Czepirkowo. Chcę skonsultować zamówienie indywidualne (szycie na miarę / z własnym pomysłem). Mój zamysł to...'
+  );
+  const customOrderWaUrl = `https://wa.me/48535277889?text=${customOrderMessage}`;
 
   return (
     <div className="min-h-screen bg-[#F7F4EE] text-stone-900 antialiased selection:bg-amber-200">
@@ -159,33 +168,53 @@ export default function HomePage() {
           Każda rzecz szyta w jednym egzemplarzu z wyselekcjonowanych tkanin tapicerskich i końcówek belek. Kupujesz bezpośrednio u Magdy bez pośredników i marż sklepowych.
         </p>
 
-        {/* Filtry */}
+        {/* Filar 2: Dynamiczne filtry (Kategorie, które tworzą się same z bazy) */}
         <div className="flex flex-wrap items-center justify-center gap-2 mt-7">
-          {(
-            [
-              { id: 'wszystkie', label: 'Wszystkie dostępne' },
-              { id: 'torby', label: 'Torby, Kufry & Nerki' },
-              { id: 'akcesoria', label: 'Akcesoria Zero Waste' },
-              { id: 'dom', label: 'Dla Domu' },
-              { id: 'sprzedane', label: 'Galeria sprzedanych' },
-            ] as const
-          ).map((tab) => (
+          {/* Zawsze widoczna baza 1: Wszystkie dostępne */}
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('wszystkie')}
+            className={`text-xs px-4 py-2 rounded-full font-bold transition-all cursor-pointer ${
+              selectedCategory === 'wszystkie'
+                ? 'bg-stone-950 text-white shadow-sm border border-stone-950'
+                : 'bg-white border-2 border-stone-300 text-stone-800 hover:border-stone-900'
+            }`}
+          >
+            Wszystkie dostępne ({availableCount})
+          </button>
+
+          {/* Dynamicznie generowane przyciski asortymentu z bazy */}
+          {dynamicCategories.map((cat) => (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`text-xs px-4 py-2 rounded-full font-bold transition-all ${
-                activeTab === tab.id
+              key={cat.name}
+              type="button"
+              onClick={() => setSelectedCategory(cat.name)}
+              className={`text-xs px-4 py-2 rounded-full font-bold transition-all cursor-pointer ${
+                selectedCategory === cat.name
                   ? 'bg-stone-950 text-white shadow-sm border border-stone-950'
                   : 'bg-white border-2 border-stone-300 text-stone-800 hover:border-stone-900'
               }`}
             >
-              {tab.label}
+              {cat.name} ({cat.count})
             </button>
           ))}
+
+          {/* Zawsze widoczna baza 2: Galeria sprzedanych (Social Proof) */}
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('sprzedane')}
+            className={`text-xs px-4 py-2 rounded-full font-bold transition-all cursor-pointer ${
+              selectedCategory === 'sprzedane'
+                ? 'bg-stone-950 text-white shadow-sm border border-stone-950'
+                : 'bg-white border-2 border-stone-300 text-stone-800 hover:border-stone-900'
+            }`}
+          >
+            Galeria sprzedanych ({soldCount})
+          </button>
         </div>
       </section>
 
-      {/* Showroom Grid */}
+      {/* Showroom Grid (Filar 2: Kasetonowa galeria produktu z pełnoekranowym Lightboxem) */}
       <main className="max-w-6xl mx-auto px-4 pb-16">
         {isLoading ? (
           <div className="text-center py-16 text-stone-600 font-bold text-sm">
@@ -200,13 +229,70 @@ export default function HomePage() {
         )}
 
         {!isLoading && filteredProducts.length === 0 && (
-          <div className="text-center py-16 text-stone-500 font-bold text-sm">
+          <div className="text-center py-16 text-stone-500 font-bold text-sm bg-white rounded-3xl border-2 border-dashed border-stone-300 p-8 my-6">
             Brak prac w tej kategorii. Nowy drop już niebawem przy maszynie!
           </div>
         )}
       </main>
 
-      {/* Cennik Poprawek */}
+      {/* FILAR 1: STRUMIEŃ 3 - ZLECENIA NA MIARĘ & KONFIGURATOR WHATSAPP */}
+      <section className="max-w-6xl mx-auto px-4 pb-16">
+        <div className="bg-gradient-to-br from-[#2D241E] via-[#241D17] to-stone-950 text-stone-100 rounded-3xl p-7 sm:p-12 shadow-2xl border-2 border-amber-900/40 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 max-w-3xl">
+            <span className="inline-block bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs px-3.5 py-1 rounded-full font-black uppercase tracking-wider mb-4">
+              Strumień 3 · Szycie na zamówienie
+            </span>
+
+            <h3 className="text-2xl sm:text-4xl font-serif font-black text-white leading-tight">
+              Masz własny pomysł lub tkaninę? Uszyjmy to na miarę.
+            </h3>
+
+            <p className="text-stone-300 text-sm sm:text-base mt-3 leading-relaxed">
+              Nie znalazłaś idealnego wymiaru w showroomie? Masz sentymentalną tkaninę, własny materiał lub szukasz kuferka w konkretnej kolorystyce? Magda realizuje autorskie zamówienia indywidualne.
+            </p>
+
+            {/* Trzy proste kroki rzemieślnicze */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-6 border-t border-stone-800">
+              <div className="bg-stone-900/70 p-4 rounded-2xl border border-stone-800">
+                <span className="text-amber-400 font-black text-lg">1. Projekt</span>
+                <p className="text-xs text-stone-300 mt-1">
+                  Wysyłasz zdjęcie inspiracji, wymiary lub omawiasz pomysł przez WhatsApp.
+                </p>
+              </div>
+
+              <div className="bg-stone-900/70 p-4 rounded-2xl border border-stone-800">
+                <span className="text-amber-400 font-black text-lg">2. Zadatek 50%</span>
+                <p className="text-xs text-stone-300 mt-1">
+                  Jasna wycena robocizny, szybki przelew BLIK na numer telefonu i start szycia.
+                </p>
+              </div>
+
+              <div className="bg-stone-900/70 p-4 rounded-2xl border border-stone-800">
+                <span className="text-amber-400 font-black text-lg">3. Realizacja</span>
+                <p className="text-xs text-stone-300 mt-1">
+                  Zdjęcia z postępów przy maszynie, odbiór osobisty w Międzyrzeczu lub Paczkomat.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <a
+                href={customOrderWaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-black text-sm transition-all shadow-lg shadow-emerald-950/40 cursor-pointer"
+              >
+                <span>💬</span>
+                <span>Skonsultuj projekt z Magdą na WhatsApp (+48 535 277 889)</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Cennik Poprawek (Filar 1: Strumień 2 - Lokalny Cashflow) */}
       <PricingList services={services} />
 
       {/* Modal Logowania dla Magdy */}

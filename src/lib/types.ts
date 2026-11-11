@@ -6,11 +6,13 @@ export interface Product {
   dimensions: string;
   description: string;
   imageUrl: string;
+  images?: string[]; // Kasetonowa galeria detali (dodatkowe ujęcia)
   isAvailable: boolean;
   createdAt?: string;
 }
 
 export interface ServicePriceItem {
+  id?: string;
   name: string;
   price: string;
   turnaround: string;
