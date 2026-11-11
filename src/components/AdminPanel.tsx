@@ -25,7 +25,15 @@ export default function AdminPanel({
   onUpdateServices,
   onClose,
 }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'product' | 'items' | 'pricing'>('product');
+  const [activeTab, setActiveTab] = useState<'product' | 'items' | 'pricing' | 'security'>('product');
+
+  // Stan zmiany PIN-u Magdy
+  const [pinForm, setPinForm] = useState({
+    currentPin: '',
+    newPin: '',
+    confirmPin: '',
+  });
+  const [isChangingPin, setIsChangingPin] = useState(false);
 
   // Wielozdjęciowy moduł dodawania unikatów (Filar 3)
   const [imageBlobs, setImageBlobs] = useState<Blob[]>([]);
@@ -286,6 +294,42 @@ export default function AdminPanel({
     }
   };
 
+  const handleChangePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinForm.newPin !== pinForm.confirmPin) {
+      showToast('Wprowadzone nowe kody PIN nie są identyczne.', 'error');
+      return;
+    }
+    if (pinForm.newPin.trim().length < 4) {
+      showToast('Nowy PIN musi mieć co najmniej 4 znaki.', 'error');
+      return;
+    }
+
+    try {
+      setIsChangingPin(true);
+      const res = await fetch('/api/admin/change-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPin: pinForm.currentPin,
+          newPin: pinForm.newPin,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('🔐 ' + data.message, 'success');
+        setPinForm({ currentPin: '', newPin: '', confirmPin: '' });
+      } else {
+        showToast(data.error || 'Błąd zmiany kodu PIN.', 'error');
+      }
+    } catch {
+      showToast('Nie udało się połączyć z serwerem.', 'error');
+    } finally {
+      setIsChangingPin(false);
+    }
+  };
+
   return (
     <div className="relative w-full bg-white rounded-3xl shadow-2xl border-2 border-stone-300 p-5 sm:p-8 max-w-2xl mx-auto">
       {/* In-app Toast Banner */}
@@ -449,6 +493,17 @@ export default function AdminPanel({
           }`}
         >
           ✂️ Cennik Poprawek (48h)
+        </button>
+
+        <button
+          onClick={() => setActiveTab('security')}
+          className={`text-xs font-bold px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'security'
+              ? 'bg-stone-950 text-white shadow-sm'
+              : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+          }`}
+        >
+          🔒 Zmień PIN
         </button>
       </div>
 
@@ -830,6 +885,90 @@ export default function AdminPanel({
               💾 Zapisz cennik w bazie
             </button>
           </div>
+        </div>
+      )}
+
+      {/* 4. Widok Bezpieczeństwa: Zmiana PIN-u Magdy */}
+      {activeTab === 'security' && (
+        <div className="bg-stone-50 rounded-2xl p-5 sm:p-7 border-2 border-stone-300 space-y-5 animate-in fade-in duration-200">
+          <div className="flex items-center gap-3.5 pb-4 border-b-2 border-stone-200">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-950 flex items-center justify-center text-2xl font-bold border-2 border-amber-300 shrink-0">
+              🔑
+            </div>
+            <div>
+              <h3 className="font-serif font-black text-stone-950 text-lg sm:text-xl">
+                Zmień swój PIN dostępu do pracowni
+              </h3>
+              <p className="text-xs font-semibold text-stone-600 mt-0.5">
+                Ustaw własny, prywatny kod. Zmiana zacznie obowiązywać od razu na wszystkich urządzeniach.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleChangePin} className="space-y-4 max-w-md mx-auto pt-1">
+            <div>
+              <label className="block text-xs font-bold text-stone-900 uppercase mb-1">
+                Dotychczasowy PIN pracowni
+              </label>
+              <input
+                type="password"
+                required
+                placeholder="Wpisz obecny PIN"
+                value={pinForm.currentPin}
+                onChange={(e) => setPinForm({ ...pinForm, currentPin: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white focus:outline-none focus:border-stone-950"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-900 uppercase mb-1">
+                Nowy PIN (min. 4 znaki)
+              </label>
+              <input
+                type="password"
+                required
+                placeholder="Wpisz nowy PIN (np. 6 cyfr lub hasło)"
+                value={pinForm.newPin}
+                onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white focus:outline-none focus:border-stone-950"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-900 uppercase mb-1">
+                Powtórz nowy PIN
+              </label>
+              <input
+                type="password"
+                required
+                placeholder="Wpisz ponownie nowy PIN"
+                value={pinForm.confirmPin}
+                onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-sm font-semibold text-stone-950 bg-white focus:outline-none focus:border-stone-950"
+              />
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isChangingPin || !pinForm.currentPin || !pinForm.newPin}
+                className="w-full py-3.5 bg-stone-950 hover:bg-stone-800 disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                {isChangingPin ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Zapisywanie nowego kodu...</span>
+                  </>
+                ) : (
+                  <span>🔒 Zapisz mój nowy PIN</span>
+                )}
+              </button>
+            </div>
+
+            <p className="text-[11px] text-center font-medium text-stone-500 pt-1">
+              🛡️ Kod zostanie zaszyfrowany i zapisany w bezpiecznym magazynie pracowni.
+            </p>
+          </form>
         </div>
       )}
     </div>

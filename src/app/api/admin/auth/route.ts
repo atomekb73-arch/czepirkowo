@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     // Sztuczne opóźnienie 300ms przeciw brute-force
     await new Promise((res) => setTimeout(res, 300));
 
-    if (!verifyAdminPin(pin)) {
+    if (!(await verifyAdminPin(pin))) {
       return NextResponse.json(
         { success: false, error: 'Nieprawidłowy PIN pracowni.' },
         { status: 401 }
