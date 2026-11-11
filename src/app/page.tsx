@@ -265,32 +265,44 @@ export default function HomePage() {
               Nie znalazłaś idealnego wymiaru w showroomie? Masz sentymentalną tkaninę, własny materiał lub szukasz kuferka w konkretnej kolorystyce? Magda realizuje autorskie zamówienia indywidualne.
             </p>
 
-            {/* Trzy proste kroki rzemieślnicze - wysoki kontrast i czytelność */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-6 border-t border-amber-900/40">
-              <div className="bg-[#3A2E26] p-4.5 rounded-2xl border-2 border-amber-500/50 shadow-md">
-                <span className="text-amber-300 font-black text-base sm:text-lg flex items-center gap-1.5">
-                  <span>✂️</span> 1. Projekt
-                </span>
-                <p className="text-xs text-stone-100 font-medium mt-1.5 leading-relaxed">
-                  Wysyłasz zdjęcie inspiracji, wymiary lub omawiasz pomysł przez WhatsApp.
+            {/* KONTENER 3 KROKÓW */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-8">
+              {/* KROK 1 */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-start backdrop-blur-xs">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-base">✂️</span>
+                  <h4 className="font-semibold text-amber-400 text-sm tracking-wide">
+                    1. Projekt
+                  </h4>
+                </div>
+                <p className="text-stone-300 text-xs leading-relaxed">
+                  Wysyłasz zdjęcie inspiracji, wymiary lub omawiasz pomysł bezpośrednio przez WhatsApp.
                 </p>
               </div>
 
-              <div className="bg-[#3A2E26] p-4.5 rounded-2xl border-2 border-amber-500/50 shadow-md">
-                <span className="text-amber-300 font-black text-base sm:text-lg flex items-center gap-1.5">
-                  <span>⚡</span> 2. Zadatek 50%
-                </span>
-                <p className="text-xs text-stone-100 font-medium mt-1.5 leading-relaxed">
+              {/* KROK 2 */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-start backdrop-blur-xs">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-base">⚡</span>
+                  <h4 className="font-semibold text-amber-400 text-sm tracking-wide">
+                    2. Zadatek 50%
+                  </h4>
+                </div>
+                <p className="text-stone-300 text-xs leading-relaxed">
                   Jasna wycena robocizny, szybki przelew BLIK na numer telefonu i start szycia.
                 </p>
               </div>
 
-              <div className="bg-[#3A2E26] p-4.5 rounded-2xl border-2 border-amber-500/50 shadow-md">
-                <span className="text-amber-300 font-black text-base sm:text-lg flex items-center gap-1.5">
-                  <span>🧵</span> 3. Realizacja
-                </span>
-                <p className="text-xs text-stone-100 font-medium mt-1.5 leading-relaxed">
-                  Zdjęcia z postępów przy maszynie, odbiór osobisty w Międzyrzeczu lub Paczkomat.
+              {/* KROK 3 */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-start backdrop-blur-xs">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-base">🧵</span>
+                  <h4 className="font-semibold text-amber-400 text-sm tracking-wide">
+                    3. Realizacja
+                  </h4>
+                </div>
+                <p className="text-stone-300 text-xs leading-relaxed">
+                  Zdjęcia z postępów przy maszynie, odbiór osobisty w Międzyrzeczu lub szybki Paczkomat.
                 </p>
               </div>
             </div>
