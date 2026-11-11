@@ -37,12 +37,18 @@ export default function HomePage() {
     loadData();
   }, []);
 
-  // Filar 2: Dynamiczne filtry generowane automatycznie z bazy produktów
+  // Filar 2: Dynamiczne filtry generowane automatycznie z bazy produktów (zabezpieczone przed spacjami i duplikatami)
   const dynamicCategories = useMemo(() => {
     const map = new Map<string, number>();
     products.forEach((p) => {
       if (p.isAvailable && p.category) {
-        const cat = p.category.trim();
+        let cat = p.category.trim();
+        // Normalizacja synonimów i pisowni (np. "Torby i Nerki" vs "Torby & Nerki")
+        if (cat.toLowerCase() === 'torby i nerki' || cat.toLowerCase() === 'torby & nerki') {
+          cat = 'Torby & Nerki';
+        } else if (cat.toLowerCase() === 'torby i kufry' || cat.toLowerCase() === 'torby & kufry') {
+          cat = 'Torby & Kufry';
+        }
         map.set(cat, (map.get(cat) || 0) + 1);
       }
     });
@@ -59,7 +65,13 @@ export default function HomePage() {
     if (selectedCategory === 'wszystkie') {
       return p.isAvailable;
     }
-    return p.isAvailable && p.category.trim().toLowerCase() === selectedCategory.trim().toLowerCase();
+    let pCat = (p.category || '').trim();
+    if (pCat.toLowerCase() === 'torby i nerki' || pCat.toLowerCase() === 'torby & nerki') {
+      pCat = 'Torby & Nerki';
+    } else if (pCat.toLowerCase() === 'torby i kufry' || pCat.toLowerCase() === 'torby & kufry') {
+      pCat = 'Torby & Kufry';
+    }
+    return p.isAvailable && pCat.toLowerCase() === selectedCategory.trim().toLowerCase();
   });
 
   const handleOpenAdmin = () => {
@@ -253,25 +265,31 @@ export default function HomePage() {
               Nie znalazłaś idealnego wymiaru w showroomie? Masz sentymentalną tkaninę, własny materiał lub szukasz kuferka w konkretnej kolorystyce? Magda realizuje autorskie zamówienia indywidualne.
             </p>
 
-            {/* Trzy proste kroki rzemieślnicze */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-6 border-t border-stone-800">
-              <div className="bg-stone-900/70 p-4 rounded-2xl border border-stone-800">
-                <span className="text-amber-400 font-black text-lg">1. Projekt</span>
-                <p className="text-xs text-stone-300 mt-1">
+            {/* Trzy proste kroki rzemieślnicze - wysoki kontrast i czytelność */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-6 border-t border-amber-900/40">
+              <div className="bg-[#3A2E26] p-4.5 rounded-2xl border-2 border-amber-500/50 shadow-md">
+                <span className="text-amber-300 font-black text-base sm:text-lg flex items-center gap-1.5">
+                  <span>✂️</span> 1. Projekt
+                </span>
+                <p className="text-xs text-stone-100 font-medium mt-1.5 leading-relaxed">
                   Wysyłasz zdjęcie inspiracji, wymiary lub omawiasz pomysł przez WhatsApp.
                 </p>
               </div>
 
-              <div className="bg-stone-900/70 p-4 rounded-2xl border border-stone-800">
-                <span className="text-amber-400 font-black text-lg">2. Zadatek 50%</span>
-                <p className="text-xs text-stone-300 mt-1">
+              <div className="bg-[#3A2E26] p-4.5 rounded-2xl border-2 border-amber-500/50 shadow-md">
+                <span className="text-amber-300 font-black text-base sm:text-lg flex items-center gap-1.5">
+                  <span>⚡</span> 2. Zadatek 50%
+                </span>
+                <p className="text-xs text-stone-100 font-medium mt-1.5 leading-relaxed">
                   Jasna wycena robocizny, szybki przelew BLIK na numer telefonu i start szycia.
                 </p>
               </div>
 
-              <div className="bg-stone-900/70 p-4 rounded-2xl border border-stone-800">
-                <span className="text-amber-400 font-black text-lg">3. Realizacja</span>
-                <p className="text-xs text-stone-300 mt-1">
+              <div className="bg-[#3A2E26] p-4.5 rounded-2xl border-2 border-amber-500/50 shadow-md">
+                <span className="text-amber-300 font-black text-base sm:text-lg flex items-center gap-1.5">
+                  <span>🧵</span> 3. Realizacja
+                </span>
+                <p className="text-xs text-stone-100 font-medium mt-1.5 leading-relaxed">
                   Zdjęcia z postępów przy maszynie, odbiór osobisty w Międzyrzeczu lub Paczkomat.
                 </p>
               </div>

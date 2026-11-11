@@ -42,14 +42,14 @@ export default function ProductCard({ product }: ProductCardProps) {
                 className="w-full h-full object-cover transition-transform duration-500 group-hover/hero:scale-105"
               />
 
-              {/* Kategoria */}
-              <div className="absolute top-2.5 left-2.5 bg-stone-950/85 backdrop-blur-xs text-white text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow">
+              {/* Kategoria - wysoki kontrast i czytelność na każdym tle (jasnym i ciemnym) */}
+              <div className="absolute top-2.5 left-2.5 bg-white/95 text-stone-950 border-2 border-stone-300 text-[10px] sm:text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md backdrop-blur-xs">
                 {category}
               </div>
 
-              {/* Plakietka dostępności */}
+              {/* Plakietka dostępności - soczysty bursztyn z wyraźnym obrysem */}
               {isAvailable ? (
-                <div className="absolute top-2.5 right-2.5 bg-amber-700 text-white text-[10px] sm:text-[11px] font-black px-2.5 py-1 rounded-full shadow-md animate-pulse">
+                <div className="absolute top-2.5 right-2.5 bg-amber-600 text-white text-[10px] sm:text-[11px] font-black px-2.5 py-1 rounded-full shadow-md border border-amber-400">
                   Tylko 1 sztuka
                 </div>
               ) : (
