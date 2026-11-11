@@ -2,8 +2,12 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Pracownia Twórcza @Czepirkowo – Magda Czepirska',
-  description: 'Unikatowe rzemiosło krawieckie, nerki, torby i ekspresowe poprawki w Międzyrzeczu.',
+  title: 'Pracownia Twórcza @czepirkowo | Rękodzieło & Szycie na miarę',
+  description: 'Autorskie torby, nerki i rzemiosło krawieckie Magdy Czepirskiej w Międzyrzeczu.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({

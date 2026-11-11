@@ -442,13 +442,20 @@ export default function AdminPanel({
       )}
 
       <div className="flex items-center justify-between mb-5">
-        <div>
-          <span className="text-[11px] font-black text-amber-950 bg-amber-100 border border-amber-400 px-3 py-1 rounded-full uppercase tracking-wider">
-            Atelier Magdy Czepirskiej · Panel Kontrolny
-          </span>
-          <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-950 mt-1.5">
-            Kokpit Magdy
-          </h2>
+        <div className="flex items-center gap-3">
+          <img
+            src="/logo.png"
+            alt="Logo Czepirkowo"
+            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-contain border-2 border-stone-300 shadow-xs shrink-0"
+          />
+          <div>
+            <span className="text-[11px] font-black text-amber-950 bg-amber-100 border border-amber-400 px-3 py-1 rounded-full uppercase tracking-wider">
+              Atelier Magdy Czepirskiej · Panel Kontrolny
+            </span>
+            <h2 className="text-xl sm:text-2xl font-serif font-black text-stone-950 mt-1">
+              Kokpit Magdy
+            </h2>
+          </div>
         </div>
         {onClose && (
           <button

@@ -144,9 +144,11 @@ function AdminContent() {
     return (
       <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border-2 border-stone-300 text-center space-y-5 animate-in fade-in duration-200">
-          <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-900 mx-auto flex items-center justify-center text-3xl font-bold border-2 border-amber-300">
-            🔒
-          </div>
+          <img
+            src="/logo.png"
+            alt="Pracownia Twórcza @czepirkowo"
+            className="w-16 h-16 rounded-full mx-auto object-contain border-2 border-amber-300 shadow-sm"
+          />
           <div>
             <h2 className="font-serif font-black text-stone-950 text-2xl">Pracownia Magdy</h2>
             <p className="text-xs font-semibold text-stone-600 mt-1">

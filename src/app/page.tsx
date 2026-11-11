@@ -129,13 +129,15 @@ export default function HomePage() {
       {/* Top Banner: Górna belka */}
       <header className="sticky top-0 z-40 bg-[#F7F4EE]/95 backdrop-blur-xs border-b-2 border-stone-300 shadow-xs">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
-            <span className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-stone-950 text-amber-100 flex items-center justify-center font-serif font-black text-base sm:text-xl border-2 border-stone-800 shadow-md shrink-0">
-              Cz
-            </span>
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <img 
+              src="/logo.png" 
+              alt="Pracownia Twórcza @czepirkowo" 
+              className="w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 object-contain shrink-0 rounded-full shadow-xs" 
+            />
             <div className="min-w-0">
               <h1 className="font-serif font-black text-stone-950 text-base sm:text-xl leading-tight tracking-tight truncate">
-                Pracownia Czepirkowo
+                Pracownia Twórcza @czepirkowo
               </h1>
               <p className="text-[10px] sm:text-xs font-semibold text-stone-600 sm:text-stone-700 mt-0.5 truncate">
                 Międzyrzecz · Rzemiosło &amp; Pasmanteria
