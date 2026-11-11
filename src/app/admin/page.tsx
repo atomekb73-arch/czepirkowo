@@ -10,21 +10,53 @@ import AdminPanel from '@/components/AdminPanel';
 function AdminContent() {
   const searchParams = useSearchParams();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [pinInput, setPinInput] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [services, setServices] = useState<ServicePriceItem[]>(TAILOR_SERVICES);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sprawdzenie tajnego klucza w URL np. /admin?key=czepirkowo
+  // Bezpieczna weryfikacja sesji serwerowej przy wejściu
   useEffect(() => {
-    const key = searchParams.get('key');
-    if (key === 'czepirkowo' || key === 'magda') {
-      setIsAuthenticated(true);
+    async function checkAuthSession() {
+      try {
+        // 1. Sprawdź czy jest ważna sesja w ciasteczku HttpOnly
+        const checkRes = await fetch('/api/admin/check', { cache: 'no-store' });
+        const checkData = await checkRes.json();
+
+        if (checkData.authenticated) {
+          setIsAuthenticated(true);
+          return;
+        }
+
+        // 2. Jeśli podano klucz w linku ?key=..., zweryfikuj go przez API
+        const key = searchParams.get('key');
+        if (key) {
+          const authRes = await fetch('/api/admin/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: key }),
+          });
+          const authData = await authRes.json();
+          if (authData.success) {
+            setIsAuthenticated(true);
+          }
+        }
+      } catch (err) {
+        console.error('Błąd weryfikacji sesji:', err);
+      } finally {
+        setIsCheckingAuth(false);
+      }
     }
+
+    checkAuthSession();
   }, [searchParams]);
 
   useEffect(() => {
     async function loadData() {
+      if (!isAuthenticated) return;
       try {
         const [loadedProducts, loadedServices] = await Promise.all([
           getProducts(),
@@ -38,16 +70,44 @@ function AdminContent() {
         setIsLoading(false);
       }
     }
-    loadData();
-  }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+    loadData();
+  }, [isAuthenticated]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput.toLowerCase() === 'czepirkowo' || pinInput.toLowerCase() === 'magda') {
-      setIsAuthenticated(true);
-    } else {
-      alert('Nieprawidłowy PIN. Domyślny PIN pracowni: czepirkowo');
+    setLoginError(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pinInput }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setIsAuthenticated(true);
+        setPinInput('');
+      } else {
+        setLoginError(data.error || 'Nieprawidłowy kod dostępu. Spróbuj ponownie.');
+      }
+    } catch {
+      setLoginError('Wystąpił problem z połączeniem z serwerem autoryzacji.');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } catch (err) {
+      console.warn('Błąd wylogowania:', err);
+    }
+    setIsAuthenticated(false);
   };
 
   const handleProductCreated = (newProduct: Product) => {
@@ -69,17 +129,28 @@ function AdminContent() {
     await saveServices(updatedServices);
   };
 
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-bold text-stone-700">Weryfikacja bezpiecznej sesji pracowni...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border-2 border-stone-300 text-center space-y-5">
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border-2 border-stone-300 text-center space-y-5 animate-in fade-in duration-200">
           <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-900 mx-auto flex items-center justify-center text-3xl font-bold border-2 border-amber-300">
             🔒
           </div>
           <div>
             <h2 className="font-serif font-black text-stone-950 text-2xl">Pracownia Magdy</h2>
             <p className="text-xs font-semibold text-stone-600 mt-1">
-              Podaj PIN, aby zarządzać showroomem i cennikiem
+              Podaj kod PIN, aby bezpiecznie zarządzać showroomem
             </p>
           </div>
 
@@ -87,16 +158,34 @@ function AdminContent() {
             <input
               type="password"
               value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
-              placeholder="Wpisz PIN pracowni"
+              onChange={(e) => {
+                setPinInput(e.target.value);
+                setLoginError(null);
+              }}
+              placeholder="Wpisz kod dostępu"
               autoFocus
               className="w-full px-4 py-3 rounded-xl border-2 border-stone-300 text-sm font-bold text-center text-stone-950 bg-stone-50 focus:outline-none focus:border-stone-900"
             />
+
+            {loginError && (
+              <div className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 py-2 px-3 rounded-xl">
+                ⚠️ {loginError}
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full py-3.5 bg-stone-950 hover:bg-stone-800 text-white font-bold text-sm rounded-xl shadow-md transition-all cursor-pointer"
+              disabled={isSubmitting || !pinInput}
+              className="w-full py-3.5 bg-stone-950 hover:bg-stone-800 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              Wejdź do panelu
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Weryfikacja...</span>
+                </>
+              ) : (
+                <span>Wejdź do panelu</span>
+              )}
             </button>
           </form>
 
@@ -122,8 +211,8 @@ function AdminContent() {
             ← Zobacz Showroom dla klientów
           </a>
           <button
-            onClick={() => setIsAuthenticated(false)}
-            className="text-xs font-bold text-red-700 hover:text-red-900 bg-red-50 border border-red-200 px-3.5 py-2 rounded-xl"
+            onClick={handleLogout}
+            className="text-xs font-bold text-red-700 hover:text-red-900 bg-red-50 border border-red-200 px-3.5 py-2 rounded-xl cursor-pointer"
           >
             Wyloguj Magdę
           </button>
@@ -141,6 +230,7 @@ function AdminContent() {
             onProductDeleted={handleProductDeleted}
             onProductStatusToggled={handleProductStatusToggled}
             onUpdateServices={handleUpdateServices}
+            onClose={handleLogout}
           />
         )}
       </div>
