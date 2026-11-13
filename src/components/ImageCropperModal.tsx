@@ -180,9 +180,15 @@ export default function ImageCropperModal({
         ctx.translate(-drawOffsetY, drawOffsetX);
       }
 
-      // Rysowanie z wyśrodkowaniem
+      // Rysowanie z wyśrodkowaniem i subtelnym podkręceniem studyjnym
       const rawDrawW = img.naturalWidth * finalScale;
       const rawDrawH = img.naturalHeight * finalScale;
+
+      try {
+        ctx.filter = 'brightness(1.06) contrast(1.05) saturate(1.04)';
+      } catch {
+        // Fallback w starszych przeglądarkach
+      }
 
       ctx.drawImage(
         img,
